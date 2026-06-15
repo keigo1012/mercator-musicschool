@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "pages:preview": "npm run build && npx wrangler pages dev out",
+    "pages:deploy": "npm run build && npx wrangler pages deploy out --project-name mercator-site"
   },
   "dependencies": {
     "next": "16.2.9",

@@ -3,10 +3,10 @@ export const images = {
     hero: "/images/FAQ/FAQ.jpg",
   },
   home: {
-    experience4: "/images/Home/Experience4.png",
-    headerLogo: "/images/Home/Logo2.png",
-    footerLogo: "/images/Home/Logo.png",
-    top: "/images/Home/TopImage.png",
+    experience4: "/images/Home/Experience4.jpg",
+    headerLogo: "/images/Home/Logo2.jpg",
+    footerLogo: "/images/Home/Logo.jpg",
+    top: "/images/Home/TopImage.jpg",
   },
   personality: {
     facebook: "/images/Personality/facebook.png",

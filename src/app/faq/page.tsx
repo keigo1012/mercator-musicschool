@@ -27,8 +27,8 @@ export default function FaqPage() {
                 <div className="space-y-4">
                   {section.items.map(([q, a]) => (
                     <details key={q} className="group overflow-hidden rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] shadow-[0_14px_35px_rgba(15,23,42,0.06)] [&_summary::-webkit-details-marker]:hidden">
-                      <summary className="flex cursor-pointer items-center justify-between gap-4 bg-[#0176BA] px-5 py-4 text-left font-bold text-white transition hover:bg-[#015F96]">
-                        <span>{q}</span>
+                      <summary className="faq-summary flex cursor-pointer items-center justify-between gap-4 bg-[#0176BA] px-5 py-4 text-left font-bold text-white transition hover:bg-[#015F96]">
+                        <span className="faq-question">{q}</span>
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/75 text-lg text-white transition group-open:rotate-45">＋</span>
                       </summary>
                       <div className="border-t border-slate-950/18 px-5 py-5">

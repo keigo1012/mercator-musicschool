@@ -37,3 +37,17 @@ npm run dev
 npm run lint
 npm run build
 ```
+
+## Cloudflare Pages
+
+Cloudflare Pages では `Next.js (Static HTML Export)` プリセットを使います。
+
+- Build command: `npm run build`
+- Build directory: `out`
+- Production branch: `main`
+
+手元から直接アップロードする場合は、Cloudflare にログインした状態で以下を実行します。
+
+```bash
+npm run pages:deploy
+```

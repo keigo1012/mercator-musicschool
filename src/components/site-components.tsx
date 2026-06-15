@@ -108,7 +108,7 @@ export function Footer() {
           )}
         </nav>
         <Link href="/" className="mx-auto mt-8 block max-w-xs">
-          <Image src={images.home.footerLogo} alt="会社ロゴ" width={180} height={180} className="mx-auto rounded-full bg-white p-3" />
+          <Image src={images.home.footerLogo} alt="会社ロゴ" width={180} height={180} className="footer-logo mx-auto rounded-full bg-white p-3" />
         </Link>
         <p className="mt-8 text-center text-xs text-slate-400">Copyright © メルカトル音楽教室 All Rights Reserved.</p>
       </div>
@@ -183,7 +183,7 @@ export function PageHeader({ title, imageSrc, imageAlt = "" }: { title: string; 
 export function SectionTitle({ title, align = "center" }: { title: string; align?: "center" | "left" }) {
   return (
     <div className={align === "center" ? "mb-10 text-center" : "mb-6 text-center"}>
-      <h2 className="luxury-heading luxury-heading-rule mx-auto max-w-3xl text-2xl md:text-4xl">
+      <h2 className="luxury-heading luxury-heading-rule section-heading mx-auto max-w-3xl text-2xl md:text-4xl">
         {title}
       </h2>
       <div className="luxury-heading-accent mx-auto mt-4" />
@@ -206,7 +206,7 @@ export function Lines({ lines, className = "", markParentheses = false }: { line
   return (
     <p className={`leading-8 text-slate-700 ${className}`}>
       {lines.map((line, index) => (
-        <span key={`${line}-${index}`}>
+          <span key={`${line}-${index}`} className="copy-line">
           {markParentheses ? renderMarkedLine(line) : line}
           <br />
         </span>
@@ -238,12 +238,12 @@ export function Cards({ items, compact = false }: { items: CardItem[]; compact?:
     <div className="grid gap-6 md:grid-cols-2">
       {items.map((item, index) => (
         <article key={`${item.title}-${index}`} className="overflow-hidden rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
-          <div className={compact ? "flex items-center gap-5 p-5 md:gap-6 md:p-6" : "p-5 md:p-6"}>
-            <Image src={item.image} alt={item.alt} width={1000} height={750} className={compact ? "h-30 w-30 shrink-0 rounded-lg border border-slate-950/18 object-cover sm:h-34 sm:w-34" : "aspect-[2/1] w-full rounded-lg object-cover"} />
+          <div className={compact ? "voice-card-inner flex items-center gap-5 p-5 md:gap-6 md:p-6" : "content-card-inner p-5 md:p-6"}>
+            <Image src={item.image} alt={item.alt} width={1000} height={750} className={compact ? "voice-card-image h-30 w-30 shrink-0 rounded-lg border border-slate-950/18 object-cover sm:h-34 sm:w-34" : "aspect-[2/1] w-full rounded-lg object-cover"} />
             <div className={compact ? "min-w-0 flex-1 text-left" : "mt-5 text-center"}>
               {compact ? null : <h3 className="luxury-heading card-heading text-center text-xl">{item.title}</h3>}
-              <Lines lines={item.body} className={compact ? "mt-3 text-sm" : "mt-4"} markParentheses={compact} />
-              {compact ? <p className="mt-3 text-right text-xs font-bold text-slate-500">{item.title}</p> : null}
+              <Lines lines={item.body} className={compact ? "voice-card-copy mt-3 text-sm" : "course-card-copy mt-4"} markParentheses={compact} />
+              {compact ? <p className="voice-card-title mt-3 text-right text-xs font-bold text-slate-500">{item.title}</p> : null}
               {item.link && item.linkHref ? (
                 <div className="mt-5">
                   <ButtonLink href={item.linkHref}>{item.link}</ButtonLink>
@@ -260,7 +260,7 @@ export function Cards({ items, compact = false }: { items: CardItem[]; compact?:
 export function CourseSection({ tone = "white" }: { tone?: "white" | "soft" }) {
   return (
     <Section title="毎回自由に選べるコース" tone={tone}>
-      <p className="mb-10 text-center leading-8 text-slate-700">
+      <p className="section-intro-copy mb-10 text-center leading-8 text-slate-700">
         メルカトル音楽教室では一つの楽器だけでなく
         <br />
         毎回自由な楽器を選択して受ける事ができます。
@@ -277,11 +277,11 @@ export function SystemSection({ includeConcert = true, tone = "soft" }: { includ
     <Section title="教室のシステムについて" tone={tone}>
       <div className="space-y-6">
         {systemItems.map((system, index) => (
-          <article key={system.title} className="grid gap-8 rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-5 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:grid-cols-2 md:items-center md:p-6">
+          <article key={system.title} className="content-card-inner grid gap-8 rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-5 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:grid-cols-2 md:items-center md:p-6">
             <Image src={system.image} alt={system.alt} width={1000} height={750} className={`aspect-[4/3] w-full rounded-lg object-cover ${index % 2 === 1 ? "md:order-2" : ""}`} />
             <div className={index % 2 === 1 ? "md:order-1" : ""}>
               <h3 className="luxury-heading card-heading text-xl">{system.title}</h3>
-              <Lines lines={system.body} className="mt-4" />
+              <Lines lines={system.body} className="system-card-copy mt-4" />
               {system.link && system.linkHref ? (
                 <div className="mt-6">
                   <ButtonLink href={system.linkHref}>{system.link}</ButtonLink>
@@ -301,7 +301,7 @@ export function ResultCommonSections() {
       <section className="bg-white px-4 pt-10 pb-16 md:pt-12 md:pb-18">
         <div className="mx-auto max-w-6xl">
           <div className="mb-10 text-center">
-            <h2 className="hero-catch mx-auto max-w-4xl text-3xl md:text-5xl">
+            <h2 className="hero-catch result-school-catch mx-auto max-w-4xl text-3xl md:text-5xl">
               <span className="hero-catch-line hero-catch-line-primary">絶対に挫折させない</span>
               <span className="hero-catch-line hero-catch-line-secondary">0から楽器を始めるなら</span>
               <span className="hero-catch-line hero-catch-line-secondary">メルカトル音楽教室</span>
