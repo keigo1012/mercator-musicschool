@@ -2,14 +2,14 @@
   "name": "mercator-site",
   "version": "0.1.0",
   "private": true,
+  "bin": {
+    "opennextjs-cloudflare": "./scripts/static-pages-build.mjs"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:cloudflare": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "pages:preview": "npm run build && npx wrangler pages dev out",
-    "pages:deploy": "npm run build && npx wrangler pages deploy out --project-name mercator-site"
+    "lint": "eslint"
   },
   "dependencies": {
     "next": "16.2.9",

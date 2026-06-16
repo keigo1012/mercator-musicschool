@@ -40,17 +40,9 @@ npm run build
 
 ## Cloudflare Pages
 
-Cloudflare Pages では静的サイトとしてデプロイします。OpenNext / Workers は使いません。
+Cloudflare Pages では静的サイトとしてデプロイします。
 
 - Framework preset: `Next.js (Static HTML Export)`
-- Build command: `npm run build:cloudflare`
+- Build command: `npm run build`
 - Build output directory: `out`
 - Production branch: `main`
-
-`npx opennextjs-cloudflare build` は使わないでください。このサイトはログインや予約機能のない静的HPなので、`next.config.ts` の `output: "export"` で `out/` にHTML/CSS/JSを書き出します。
-
-手元から直接アップロードする場合は、Cloudflare にログインした状態で以下を実行します。
-
-```bash
-npm run pages:deploy
-```
