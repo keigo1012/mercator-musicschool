@@ -11,9 +11,9 @@ export const images = {
   personality: {
     facebook: "/images/Personality/facebook.png",
     line: "/images/Personality/line.png",
-    shareOg: "/images/Personality/楽器タイプ診断X.jpg",
-    testPc: "/images/Personality/タイプ診断pc.jpg",
-    testMb: "/images/Personality/タイプ診断mb.jpg",
+    shareOg: "/images/Personality/PersonalityX.jpg",
+    testPc: "/images/Personality/Personalitypc.jpg",
+    testMb: "/images/Personality/Personalitymb.jpg",
     x: "/images/Personality/x.png",
   },
   price: {

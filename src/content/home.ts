@@ -61,7 +61,7 @@ export const systems = [
 
 export const concert = {
   title: "Mercator Music Concert",
-  image: "/images/Home/バンド.jpeg",
+  image: "/images/Home/Concert.jpeg",
   alt: "Music Concert",
   body: ["メルカトル音楽教室では毎年1回", "自由参加の発表会を開催いたします。", "2026年度は11/3(文化の日)に", "つくばカピオホールでの開催が決定いたしました。", "今年度は約30名の参加予定で", "形式自由のソロコーナーと", "同年代の方を集めたバンドコーナーを予定しております。", "観覧無料ですのでお気軽にお越しくださいませ。"],
   link: "発表会のご案内サイト",
