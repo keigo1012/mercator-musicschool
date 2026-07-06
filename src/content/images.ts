@@ -7,6 +7,7 @@ export const images = {
     headerLogo: "/images/Home/Logo2.jpg",
     footerLogo: "/images/Home/Logo.jpg",
     top: "/images/Home/TopImage.jpg",
+    topMobile: "/images/Home/TopImage-mb.jpg",
   },
   personality: {
     facebook: "/images/Personality/facebook.png",
@@ -21,5 +22,8 @@ export const images = {
   },
   studio: {
     hero: "/images/Studio/Studio.jpg",
+  },
+  trial: {
+    hero: "/images/Trial/Trial.jpg",
   },
 } as const;

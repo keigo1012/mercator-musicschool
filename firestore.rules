@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && currentUser().data.isAdmin == true;
+    }
+
+    function isNotBlocked() {
+      return signedIn() && currentUser().data.isBlockedByAdmin != true;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.isAdmin == false
+        && request.resource.data.remainingLessons == 0;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /lessonApplications/{applicationId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isNotBlocked()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+
+    match /lessonBookings/{bookingId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isNotBlocked()
+        && request.resource.id == bookingId
+        && request.resource.data.userId == request.auth.uid
+        && !exists(/databases/$(database)/documents/lessonBookings/$(bookingId));
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isNotBlocked() && resource.data.userId == request.auth.uid);
+    }
+
+    match /lessonClosedDays/{closedId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /lessonCalendarSyncLogs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /turnstileVerifications/{verificationId} {
+      allow read, write: if false;
+    }
+  }
+}

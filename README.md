@@ -16,11 +16,12 @@ Next.js 16 の App Router を使ったサイトです。アプリ本体は `src`
 
 ```text
 src/
-  app/                  URLに対応するページ
-  components/           全ページ共通の見た目パーツ
-  content/              文章・料金・連絡先などの編集データ
-  features/personality/ 楽器タイプ診断の専用部品
-public/                 画像などの静的ファイル
+  app/       URLに対応するページとAPI Route Handlers
+  components/ 全ページ共通の見た目パーツ
+  content/    文章・料金・連絡先などの編集データ
+  features/   会員、予約、無料体験、楽器診断
+  lib/        Firebase、予約、回数券などの共通処理
+public/       画像などの静的ファイル
 ```
 
 ## 開発
@@ -36,13 +37,15 @@ npm run dev
 ```bash
 npm run lint
 npm run build
+npm run preview
 ```
 
-## Cloudflare Pages
+## Cloudflare Workers
 
-Cloudflare Pages では静的サイトとしてデプロイします。
+OpenNext for Cloudflareを使用して、Next.jsのRoute Handlersを含むアプリをCloudflare Workersへデプロイします。
 
-- Framework preset: `Next.js (Static HTML Export)`
-- Build command: `npm run build`
-- Build output directory: `out`
-- Production branch: `main`
+```bash
+npm run deploy
+```
+
+本番環境では、`.env.example` に記載したサーバー用環境変数をCloudflareのSecretとして設定してください。秘密鍵を`wrangler.jsonc`やGit管理対象ファイルへ直接記載しないでください。

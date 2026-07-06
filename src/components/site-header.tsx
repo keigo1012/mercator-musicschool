@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { images } from "@/content/images";
-import { navItems } from "@/content/site";
+import { mobileNavItems, navItems } from "@/content/site";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,7 +42,7 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-[#d9ecf8] bg-white/92 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur">
       <div className="relative mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3.5 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-4">
         <Link href="/" className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
-          <Image src={images.home.headerLogo} alt="メルカトル音楽教室" width={60} height={60} className="h-13 w-13 shrink-0 rounded-full sm:h-[60px] sm:w-[60px]" priority />
+          <Image src={images.home.headerLogo} alt="メルカトル音楽教室" width={60} height={60} className="h-13 w-13 shrink-0 rounded-full sm:h-[60px] sm:w-[60px]" loading="eager" />
           <span className="min-w-0 whitespace-nowrap text-sm font-bold leading-tight tracking-[0.03em] text-slate-950 sm:text-base sm:tracking-[0.06em]">メルカトル音楽教室</span>
         </Link>
         <nav className="hidden min-w-0 items-center justify-center gap-0.5 justify-self-center text-xs font-semibold text-slate-700 lg:flex xl:text-sm">
@@ -76,7 +76,7 @@ export function Header() {
           {isOpen ? (
             <div className="absolute inset-x-4 top-[calc(100%+0.5rem)] overflow-hidden rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] shadow-[0_20px_55px_rgba(15,23,42,0.16)]">
               <nav className="grid p-2 text-sm font-bold text-slate-800">
-                {navItems.map((item) =>
+                {mobileNavItems.map((item) =>
                   item.external ? (
                     <a key={item.label} href={item.href} className="rounded-lg px-4 py-3 text-center hover:bg-[#EAF6FD] hover:text-slate-950" target="_blank" rel="noreferrer" onClick={() => setIsOpen(false)}>
                       {item.label}

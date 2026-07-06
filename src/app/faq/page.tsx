@@ -6,11 +6,11 @@ import { images } from "@/content/images";
 export const metadata: Metadata = {
   title: "よくあるご質問",
   description: "Q.複数の楽器を習う事は可能ですか？A.メルカトル音楽教室では月の回数の中から毎回自由にコースを選んでいただく事ができます。",
-  alternates: { canonical: "/faq/" },
+  alternates: { canonical: "/faq" },
   openGraph: {
     title: "よくあるご質問",
     description: "Q.複数の楽器を習う事は可能ですか？A.メルカトル音楽教室では月の回数の中から毎回自由にコースを選んでいただく事ができます。",
-    url: "/faq/",
+    url: "/faq",
   },
 };
 
@@ -32,7 +32,7 @@ export default function FaqPage() {
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/75 text-lg text-white transition group-open:rotate-45">＋</span>
                       </summary>
                       <div className="border-t border-slate-950/18 px-5 py-5">
-                        <p className="leading-8 text-slate-700">{a}</p>
+                        <p className="faq-answer leading-8 text-[#10243A]">{a}</p>
                       </div>
                     </details>
                   ))}

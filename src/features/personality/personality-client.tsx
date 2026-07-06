@@ -58,17 +58,23 @@ export default function PersonalityClient() {
   const router = useRouter();
   const [currentId, setCurrentId] = useState(6);
   const [history, setHistory] = useState<number[]>([6]);
+  const [transitioning, setTransitioning] = useState(false);
   const current = questions[currentId];
 
   function answer(nextId: number) {
-    const result = results[nextId];
-    if (result) {
-      router.push(`/personality/${result}/`);
-      return;
-    }
+    if (transitioning) return;
+    setTransitioning(true);
+    window.setTimeout(() => {
+      const result = results[nextId];
+      if (result) {
+        router.push(`/personality/${result}/`);
+        return;
+      }
 
-    setCurrentId(nextId);
-    setHistory((prev) => [...prev, nextId]);
+      setCurrentId(nextId);
+      setHistory((prev) => [...prev, nextId]);
+      setTransitioning(false);
+    }, 180);
   }
 
   function goBack() {
@@ -82,12 +88,12 @@ export default function PersonalityClient() {
   }
 
   return (
-    <div className="mx-auto max-w-xl rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-8">
-      <p className="text-2xl font-black text-[#0176BA]">Q{current.qnum}</p>
-      <p className="mt-4 text-xl font-bold leading-8 text-slate-950">{current.question}</p>
+    <div className={`mx-auto max-w-xl rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] transition duration-200 md:p-8 ${transitioning ? "translate-y-2 opacity-0" : "translate-y-0 opacity-100"}`}>
+      <p className="personality-question-number font-black text-[#0176BA]">Q{current.qnum}</p>
+      <p className="personality-question-copy mt-4 font-bold leading-8 text-slate-950">{current.question}</p>
       <div className="mt-8 grid gap-3">
         {current.choices.map((choice) => (
-          <button key={`${currentId}-${choice.label}-${choice.goto}`} type="button" onClick={() => answer(choice.goto)} className="rounded-lg bg-[#0176BA] px-6 py-4 font-bold text-white shadow-[0_2px_4px_rgba(15,23,42,0.24)] transition hover:translate-y-1 hover:bg-[#56C1FF] hover:shadow-none">
+          <button key={`${currentId}-${choice.label}-${choice.goto}`} type="button" disabled={transitioning} onClick={() => answer(choice.goto)} className={`rounded-lg px-6 py-4 font-bold text-white shadow-[0_2px_4px_rgba(15,23,42,0.24)] transition hover:translate-y-1 hover:shadow-none disabled:cursor-wait disabled:opacity-75 ${choice.label === "はい" ? "bg-[#d32f2f] hover:bg-[#b71c1c]" : choice.label === "いいえ" ? "bg-[#0176BA] hover:bg-[#015F96]" : "bg-[#0176BA] hover:bg-[#56C1FF]"}`}>
             {choice.label}
           </button>
         ))}

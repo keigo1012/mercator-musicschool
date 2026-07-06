@@ -1,0 +1,44 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mercator-site",
+  "account_id": "9862a6179114f8c2c0b74bc49d8b4003",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "mercator-musicschool.com/*",
+      "zone_name": "mercator-musicschool.com"
+    },
+    {
+      "pattern": "www.mercator-musicschool.com/*",
+      "zone_name": "mercator-musicschool.com"
+    }
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "ratelimits": [
+    {
+      "name": "TRIAL_BOOKING_RATE_LIMITER",
+      "namespace_id": "2026062101",
+      "simple": {
+        "limit": 3,
+        "period": 60
+      }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05
+    }
+  }
+}

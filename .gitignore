@@ -1,9 +1,14 @@
 .DS_Store
 .env*
+!.env.example
 .next/
+.open-next/
+.wrangler/
 node_modules/
 out/
 dist/
+*.tsbuildinfo
+*.cpuprofile
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

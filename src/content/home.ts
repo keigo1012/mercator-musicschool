@@ -41,7 +41,7 @@ export const systems = [
     alt: "スケジュール予約",
     body: ["メルカトル音楽教室では決められた日程で", "固定レッスンをするような形を取っておらず", "受講者様の都合の良い日時で24時間いつでも", "サイトから予約できるシステムを導入しております。"],
     link: "予約サイトイメージ",
-    linkHref: "https://airrsv.net/mercator-musicschool/calendar?schdlId=s000090CFE",
+    linkHref: "/trial/",
   },
   {
     title: "安心の繰り越し保証制度",

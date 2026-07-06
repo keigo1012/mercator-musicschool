@@ -2,7 +2,7 @@
 
 :root {
   --background: #fffdf8;
-  --foreground: #0f172a;
+  --foreground: #10243a;
   --site-font: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "YuGothic", "Noto Sans JP", Arial, sans-serif;
 }
 
@@ -25,11 +25,19 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--site-font);
+  font-size: clamp(13.5px, calc(10.7px + 0.713vw), 18px);
+  font-weight: 500;
   text-rendering: optimizeLegibility;
 }
 
 :where(h1, h2, h3, h4, h5, h6, button, input, textarea, select) {
   font-family: var(--site-font);
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  overflow-wrap: normal;
+  text-wrap: balance;
+  word-break: normal;
 }
 
 a {
@@ -38,6 +46,90 @@ a {
 
 a:hover {
   transform: translateY(-1px);
+}
+
+.home-hero-media {
+  position: relative;
+}
+
+.home-top-picture,
+.home-top-image {
+  display: block;
+  width: 100%;
+}
+
+.home-top-image {
+  height: auto;
+  object-fit: contain;
+}
+
+.home-scroll-guide {
+  position: fixed;
+  right: clamp(1.1rem, 4vw, 3.5rem);
+  bottom: clamp(5rem, 10svh, 7rem);
+  z-index: 40;
+  display: flex;
+  min-width: 4.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.55rem 0.65rem 0.35rem;
+  color: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  text-decoration: none;
+  text-shadow: 0 2px 8px rgba(15, 23, 42, 0.36);
+  transition: opacity 180ms ease, transform 180ms ease;
+  mix-blend-mode: difference;
+}
+
+.home-scroll-guide-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.home-scroll-guide:hover {
+  transform: translateY(2px);
+}
+
+.home-scroll-guide-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1;
+}
+
+.home-scroll-guide-line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 2.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.home-scroll-guide-line::after {
+  position: absolute;
+  top: -55%;
+  left: 0;
+  width: 100%;
+  height: 55%;
+  border-radius: inherit;
+  background: #ffffff;
+  content: "";
+  animation: home-scroll-guide 1.55s ease-in-out infinite;
+}
+
+@keyframes home-scroll-guide {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(285%);
+  }
 }
 
 .fixed-cta {
@@ -96,50 +188,159 @@ a:hover {
   }
 }
 
-@media (max-width: 430px) {
-  body {
-    font-size: 0.8125rem;
-  }
+.text-xs {
+  font-size: clamp(10px, calc(8.75px + 0.318vw), 12px);
+}
 
-  .text-xs {
-    font-size: 0.625rem;
-  }
+.text-sm {
+  font-size: clamp(13px, calc(12.38px + 0.159vw), 14px);
+}
 
-  .text-sm {
-    font-size: 0.75rem;
-  }
+.text-base {
+  font-size: clamp(14px, calc(12.75px + 0.318vw), 16px);
+}
 
-  .text-base {
-    font-size: 0.8125rem;
-  }
+.text-lg {
+  font-size: clamp(15px, calc(13.13px + 0.475vw), 18px);
+}
 
-  .text-lg {
-    font-size: 0.875rem;
-  }
+.text-xl {
+  font-size: clamp(16px, calc(13.51px + 0.634vw), 20px);
+}
 
-  .text-xl {
-    font-size: 0.9375rem;
-  }
+.text-2xl {
+  font-size: clamp(18px, calc(14.26px + 0.951vw), 24px);
+}
 
-  .text-2xl {
-    font-size: 1rem;
-  }
+.text-3xl {
+  font-size: clamp(21px, calc(15.4px + 1.426vw), 30px);
+}
 
-  .text-3xl {
-    font-size: 1.1875rem;
-  }
+.text-4xl {
+  font-size: clamp(26px, calc(19.77px + 1.585vw), 36px);
+}
 
-  .text-4xl {
-    font-size: 1.625rem;
-  }
+.text-5xl {
+  font-size: clamp(36px, calc(28.52px + 1.902vw), 48px);
+}
 
-  .text-5xl {
-    font-size: 2.25rem;
-  }
+.text-6xl {
+  font-size: clamp(44px, calc(34.03px + 2.536vw), 60px);
+}
 
-  .text-6xl {
-    font-size: 2.75rem;
-  }
+.home-about-copy,
+.section-intro-copy {
+  font-size: clamp(13.5px, calc(10.7px + 0.713vw), 18px);
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.copy-container {
+  container-type: inline-size;
+}
+
+.course-card-copy {
+  font-size: clamp(11px, 3.8cqi, 18px);
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.system-card-copy {
+  font-size: clamp(11px, 4cqi, 18px);
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.voice-card-copy {
+  font-size: clamp(10.5px, 4.9cqi, 14px);
+  font-weight: 500;
+  line-height: 1.75;
+}
+
+.section-heading {
+  font-size: clamp(22px, calc(5.81px + 4.12vw), 48px);
+}
+
+.page-heading {
+  font-size: clamp(21px, calc(4.18px + 4.28vw), 48px);
+}
+
+.home-about-heading {
+  font-size: clamp(16px, calc(7.28px + 2.218vw), 30px);
+}
+
+.card-heading {
+  font-size: clamp(18px, calc(14.26px + 0.951vw), 24px);
+}
+
+.system-card-heading {
+  font-size: clamp(16px, 5.3cqi, 24px);
+}
+
+.home-hero-catch {
+  font-size: clamp(29px, calc(9.68px + 4.916vw), 60px);
+}
+
+.result-school-catch {
+  font-size: clamp(26px, calc(12.3px + 3.483vw), 48px);
+}
+
+.faq-question,
+.home-faq-question,
+.faq-answer,
+.home-faq-answer {
+  font-size: clamp(13.5px, calc(10.7px + 0.713vw), 18px);
+}
+
+.content-heading,
+.panel-heading {
+  font-size: clamp(18px, calc(14.26px + 0.951vw), 24px);
+}
+
+.content-subheading {
+  font-size: clamp(16px, calc(13.51px + 0.634vw), 20px);
+}
+
+.content-copy,
+.personality-result-body {
+  font-size: clamp(13.5px, calc(10.7px + 0.713vw), 18px);
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.display-value {
+  font-size: clamp(21px, calc(15.4px + 1.426vw), 30px);
+}
+
+.price-value {
+  font-size: clamp(16px, calc(11.02px + 1.268vw), 24px);
+}
+
+.ui-heading {
+  font-size: clamp(17px, calc(14.51px + 0.634vw), 21px);
+}
+
+.ui-subheading {
+  font-size: clamp(15px, calc(13.13px + 0.475vw), 18px);
+}
+
+.personality-question-number {
+  font-size: clamp(18px, calc(14.26px + 0.951vw), 24px);
+}
+
+.personality-question-copy {
+  font-size: clamp(16px, calc(13.51px + 0.634vw), 20px);
+}
+
+.portal-shell h2.text-xl {
+  font-size: clamp(18px, calc(14.26px + 0.951vw), 24px);
+}
+
+.portal-shell h2.text-lg {
+  font-size: clamp(15px, calc(13.13px + 0.475vw), 18px);
+}
+
+@media (max-width: 767px) {
 
   .leading-7,
   .leading-8 {
@@ -153,49 +354,48 @@ a:hover {
     letter-spacing: 0.03em;
   }
 
-  .home-hero-catch {
-    font-size: 1.625rem;
-  }
-
-  .section-heading {
-    font-size: 1.25rem;
-  }
-
   .home-about-card,
   .content-card-inner,
   .voice-card-inner {
     padding: 1rem;
   }
 
+  .content-card-inner {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .content-card-inner > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .home-about-copy,
   .section-intro-copy,
   .course-card-copy,
   .system-card-copy {
-    font-size: 0.75rem;
-    letter-spacing: -0.01em;
-    line-height: 1.85;
+    letter-spacing: -0.035em;
   }
 
   .voice-card-copy {
-    font-size: clamp(0.5625rem, 2.5vw, 0.7rem);
-    letter-spacing: -0.01em;
-    line-height: 1.75;
+    letter-spacing: -0.025em;
   }
 
   .copy-line {
     display: inline-block;
     max-width: 100%;
-    white-space: nowrap;
   }
 
   .voice-card-inner {
     flex-direction: row;
-    gap: 0.65rem;
+    gap: 0.5rem;
+    padding-inline: 0.875rem;
   }
 
   .voice-card-image {
-    width: 4.5rem;
-    height: 4.5rem;
+    width: 4.25rem;
+    height: 4.25rem;
   }
 
   .voice-card-title {
@@ -215,22 +415,16 @@ a:hover {
   .faq-question,
   .home-faq-question {
     min-width: 0;
-    white-space: nowrap;
-    font-size: clamp(0.625rem, 3.15vw, 0.8125rem);
     letter-spacing: -0.04em;
   }
 
+  .faq-answer,
   .home-faq-answer {
-    font-size: 0.75rem;
     line-height: 1.85;
   }
 
   .personality-result-body {
     line-height: 1.75;
-  }
-
-  .result-school-catch {
-    font-size: 1.625rem;
   }
 
   .personality-share-icon {
@@ -255,45 +449,98 @@ a:hover {
   .fixed-cta-pill {
     padding: 0.2rem 0.4rem;
   }
+
 }
 
-@media (max-width: 360px) {
-  body {
-    font-size: 0.8125rem;
+@media (min-width: 1024px) {
+  .voice-card-copy .copy-line {
+    display: inline-block;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 393px) {
+  .home-about-copy,
+  .section-intro-copy {
+    font-size: clamp(11.75px, calc(-7.34px + 5.303vw), 13.5px);
   }
 
-  .text-sm {
-    font-size: 0.75rem;
+  .section-heading {
+    font-size: clamp(20px, calc(-1.82px + 6.061vw), 22px);
   }
 
-  .text-xl {
-    font-size: 0.9375rem;
+  .page-heading {
+    font-size: clamp(19px, calc(-2.82px + 6.061vw), 21px);
   }
 
-  .text-2xl {
-    font-size: 1.0625rem;
+  .home-about-heading {
+    font-size: clamp(15px, calc(4.09px + 3.03vw), 16px);
   }
 
-  .text-3xl {
-    font-size: 1.25rem;
-  }
-
-  .text-4xl {
-    font-size: 1.625rem;
+  .card-heading,
+  .system-card-heading {
+    font-size: clamp(16px, calc(-5.82px + 6.061vw), 18px);
   }
 
   .home-hero-catch {
-    font-size: 1.625rem;
+    font-size: clamp(27px, calc(5.18px + 6.061vw), 29px);
   }
 
-  .fixed-cta {
-    gap: 0.15rem;
-    padding-inline: 0.3rem;
-    font-size: 0.625rem;
+  .result-school-catch {
+    font-size: clamp(24px, calc(2.18px + 6.061vw), 26px);
   }
 
-  .fixed-cta-pill {
-    padding-inline: 0.32rem;
+  .faq-question,
+  .home-faq-question,
+  .faq-answer,
+  .home-faq-answer {
+    font-size: clamp(12.5px, calc(1.59px + 3.03vw), 13.5px);
+  }
+
+  .content-heading,
+  .panel-heading {
+    font-size: clamp(16px, calc(-5.82px + 6.061vw), 18px);
+  }
+
+  .content-subheading {
+    font-size: clamp(15px, calc(4.09px + 3.03vw), 16px);
+  }
+
+  .content-copy,
+  .personality-result-body {
+    font-size: clamp(12.5px, calc(1.59px + 3.03vw), 13.5px);
+  }
+
+  .display-value {
+    font-size: clamp(20px, calc(-1.82px + 6.061vw), 22px);
+  }
+
+  .price-value {
+    font-size: clamp(14px, calc(-7.82px + 6.061vw), 16px);
+  }
+
+  .ui-heading {
+    font-size: clamp(16px, calc(5.09px + 3.03vw), 17px);
+  }
+
+  .ui-subheading {
+    font-size: clamp(14px, calc(3.09px + 3.03vw), 15px);
+  }
+
+  .personality-question-number {
+    font-size: clamp(17px, calc(6.09px + 3.03vw), 18px);
+  }
+
+  .personality-question-copy {
+    font-size: clamp(15px, calc(4.09px + 3.03vw), 16px);
+  }
+
+  .portal-shell h2.text-xl {
+    font-size: clamp(16px, calc(-5.82px + 6.061vw), 18px);
+  }
+
+  .portal-shell h2.text-lg {
+    font-size: clamp(14px, calc(3.09px + 3.03vw), 15px);
   }
 }
 
@@ -317,7 +564,7 @@ a:hover {
 }
 
 .luxury-heading {
-  color: #071827;
+  color: var(--foreground);
   display: inline-block;
   position: relative;
   font-family: var(--site-font);
@@ -411,7 +658,7 @@ a:hover {
 }
 
 .card-heading {
-  color: #10243a;
+  color: var(--foreground);
   font-weight: 750;
   letter-spacing: 0.02em;
 }

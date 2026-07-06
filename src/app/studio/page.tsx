@@ -4,13 +4,13 @@ import { images } from "@/content/images";
 import { accessLines, addressLines } from "@/content/studio";
 
 export const metadata: Metadata = {
-  title: "レッスンスタジオ",
-  description: "土浦市永国のスタジオにてドラム・ピアノ・ギター・ベース・DTMから自由にレッスンを選択可能です。",
-  alternates: { canonical: "/studio/" },
+  title: "土浦市永国のレッスンスタジオ",
+  description: "茨城県土浦市永国の音楽教室スタジオ。土浦駅から車で6分、イオンモール土浦から車で3分。ドラム・ピアノ・ギター・ベース・DTMの個人レッスンを行います。",
+  alternates: { canonical: "/studio" },
   openGraph: {
-    title: "レッスンスタジオ",
-    description: "土浦市永国のスタジオにてドラム・ピアノ・ギター・ベース・DTMから自由にレッスンを選択可能です。",
-    url: "/studio/",
+    title: "土浦市永国のレッスンスタジオ",
+    description: "土浦駅から車で6分の音楽教室スタジオで、ドラム・ピアノ・ギター・ベース・DTMの個人レッスンを行います。",
+    url: "/studio",
   },
 };
 
@@ -22,8 +22,8 @@ export default function StudioPage() {
         <section className="px-4 py-14 md:py-20">
           <div className="mx-auto max-w-6xl">
             <article className="rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:p-8">
-              <h2 className="luxury-heading text-2xl">オンライン/通常レッスン</h2>
-              <div className="mx-auto mt-6 max-w-3xl space-y-3 leading-8 text-slate-700">
+              <h2 className="content-heading luxury-heading">オンライン/通常レッスン</h2>
+              <div className="content-copy mx-auto mt-6 max-w-3xl space-y-2 text-[#10243A]">
                 <p>通常レッスンは以下のスタジオで行います。</p>
                 <p>レッスンで使用する楽器はスタジオに揃えてありますので、手ぶらでも大丈夫です。</p>
                 <p>オンラインレッスンは全国どこにいる方でもビデオ通話ソフトを利用してレッスンいたします。</p>
@@ -33,8 +33,8 @@ export default function StudioPage() {
             <div className="mt-6 grid gap-6 md:grid-cols-2">
               <article className="rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
                 <div>
-                  <h2 className="luxury-heading text-xl">メルカトル音楽教室</h2>
-                  <div className="mt-5 space-y-2 leading-8 text-slate-700">
+                  <h2 className="content-subheading luxury-heading">メルカトル音楽教室</h2>
+                  <div className="content-copy mt-5 space-y-2 text-[#10243A]">
                     {accessLines.map((line) => (
                       <p key={line}>{line}</p>
                     ))}
@@ -44,8 +44,8 @@ export default function StudioPage() {
 
               <article className="rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)]">
                 <div>
-                  <h2 className="luxury-heading text-xl">レッスンスタジオ所在地</h2>
-                  <div className="mt-5 space-y-2 leading-8 text-slate-700">
+                  <h2 className="content-subheading luxury-heading">レッスンスタジオ所在地</h2>
+                  <div className="content-copy mt-5 space-y-2 text-[#10243A]">
                     {addressLines.map((line) => (
                       <p key={line}>{line}</p>
                     ))}
@@ -55,8 +55,8 @@ export default function StudioPage() {
 
               <article className="rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-6 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:col-span-2">
                 <div>
-                  <h2 className="luxury-heading text-xl">駐車場</h2>
-                  <p className="mt-5 leading-8 text-slate-700">建物前に1台無料駐車場あり</p>
+                  <h2 className="content-subheading luxury-heading">駐車場</h2>
+                  <p className="content-copy mt-5 text-[#10243A]">建物前に1台無料駐車場あり</p>
                 </div>
               </article>
             </div>
