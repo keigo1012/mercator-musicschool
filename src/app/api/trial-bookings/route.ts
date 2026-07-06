@@ -4,21 +4,11 @@ import { jsonError } from "@/lib/firebase/api";
 import { sendTrialBookingEmail } from "@/lib/contact/resend";
 import { createTrialBooking } from "@/lib/lesson/server";
 import { getInstrumentLabel } from "@/lib/lesson/constants";
-import { formatDateJa, getJapaneseSchoolGrade, isValidBirthDate, pad2, toTokyoParts } from "@/lib/lesson/dates";
+import { formatDateJa, pad2 } from "@/lib/lesson/dates";
 import { checkTrialBookingRateLimit } from "@/lib/cloudflare/rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile/verify";
 
 export const dynamic = "force-dynamic";
-
-function formatBirthDateWithAgeAndGrade(birthDate: string) {
-  if (!isValidBirthDate(birthDate)) return birthDate;
-  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
-  const current = toTokyoParts();
-  const hasBirthdayPassed = current.month > birthMonth || (current.month === birthMonth && current.day >= birthDay);
-  const age = current.year - birthYear - (hasBirthdayPassed ? 0 : 1);
-  const grade = getJapaneseSchoolGrade(birthDate);
-  return `${birthDate} (${age}歳${grade ? `・${grade}` : ""})`;
-}
 
 function lessonFormatLabel(value: unknown) {
   return value === "online" ? "オンライン" : "対面";
@@ -65,12 +55,13 @@ export async function POST(request: Request) {
     const result = await createTrialBooking(body);
     const hour = Number(body.hour);
     try {
+      const userBirthDate = String(body.userBirthDate ?? "").trim();
       await sendTrialBookingEmail({
         userName: String(body.userName ?? "").trim(),
         userEmail: email,
         userPhoneNumber: String(body.userPhoneNumber ?? "").trim(),
-        userBirthDate: String(body.userBirthDate ?? "").trim(),
-        userBirthDateLabel: formatBirthDateWithAgeAndGrade(String(body.userBirthDate ?? "").trim()),
+        userBirthDate,
+        userBirthDateLabel: userBirthDate,
         lessonFormatLabel: lessonFormatLabel(body.lessonFormat),
         instrumentLabel: getInstrumentLabel(String(body.instrument ?? "")),
         dateLabel: formatDateJa(String(body.date ?? "")),
