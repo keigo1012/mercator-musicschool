@@ -24,6 +24,7 @@ const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-
 const subtleButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-slate-950/18 bg-white px-5 py-2 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400";
 const selectedButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-[#0176BA] bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
 const dangerButton = "inline-flex min-h-11 items-center justify-center rounded-full bg-[#d32f2f] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#b71c1c] disabled:cursor-not-allowed disabled:bg-slate-300";
+const unavailableSlotButton = "inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-950/10 bg-slate-100 px-5 py-2 text-sm font-bold text-slate-400 disabled:cursor-not-allowed";
 const inputClass = "min-h-11 w-full rounded-lg border border-slate-950/18 bg-white px-3 py-2 text-sm outline-none focus:border-[#0176BA] focus:ring-2 focus:ring-[#0176BA]/15";
 const applicationField = "block min-w-0 text-sm font-bold text-slate-700 md:col-span-2";
 const applicationControl = `${inputClass} mt-2 block w-full`;
@@ -697,7 +698,7 @@ function BookingPanel({ authUser, state, refresh, setError, setNotice }: { authU
                 const deadlineError = validateLessonDeadline(selectedDate);
                 const disabled = Boolean(closed || (!isOwn && (booking || defaultUnavailable)) || deadlineError || user.remainingLessons <= 0 || busy);
                 const label = isOwn && !deadlineError ? "予約済み" : disabled ? "予約不可" : "予約可";
-                return <button key={id} disabled={isOwn ? Boolean(deadlineError || busy) : disabled} onClick={() => isOwn && booking ? cancelBooking(booking) : createBooking(selectedDate, hour)} className={`${isOwn ? primaryButton : subtleButton} justify-between rounded-lg`}>
+                return <button key={id} disabled={isOwn ? Boolean(deadlineError || busy) : disabled} onClick={() => isOwn && booking ? cancelBooking(booking) : createBooking(selectedDate, hour)} className={`${label === "予約不可" ? unavailableSlotButton : isOwn ? primaryButton : subtleButton} justify-between rounded-lg`}>
                   <span>{hour}:00-{hour + 1}:00 {busy === id || busy === `${selectedDate}-${hour}` ? "処理中" : label}</span>
                 </button>;
               })}

@@ -20,6 +20,7 @@ const card = "rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#
 const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-full bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
 const subtleButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-slate-950/18 bg-white px-5 py-2 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400";
 const selectedButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-[#0176BA] bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
+const unavailableSlotButton = "inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-950/10 bg-slate-100 px-5 py-2 text-sm font-bold text-slate-400 disabled:cursor-not-allowed";
 const inputClass = "min-h-11 w-full rounded-lg border border-slate-950/18 bg-white px-3 py-2 text-sm outline-none focus:border-[#0176BA] focus:ring-2 focus:ring-[#0176BA]/15";
 const birthDateGrid = "mt-2 grid max-w-[15.5rem] grid-cols-[minmax(0,5.5rem)_minmax(0,4rem)_minmax(0,4rem)] gap-2";
 
@@ -311,7 +312,7 @@ export function TrialBookingClient() {
                       key={slotId}
                       disabled={unavailable}
                       onClick={() => setSelectedHour(hour)}
-                      className={`${selectedHour === hour ? selectedButton : subtleButton} justify-between rounded-lg`}
+                      className={`${unavailable ? unavailableSlotButton : selectedHour === hour ? selectedButton : subtleButton} justify-between rounded-lg`}
                     >
                       <span>{hour}:00-{hour + 1}:00 {unavailable ? "予約不可" : "予約可"}</span>
                     </button>
