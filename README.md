@@ -49,3 +49,29 @@ npm run deploy
 ```
 
 本番環境では、`.env.example` に記載したサーバー用環境変数をCloudflareのSecretとして設定してください。秘密鍵を`wrangler.jsonc`やGit管理対象ファイルへ直接記載しないでください。
+
+## 依存関係の自動更新
+
+Dependabotが毎月9時（日本時間）にnpmパッケージを確認します。セキュリティ更新は通常確認の周期を待たず、随時提案されます。
+
+- 通常・セキュリティのパッチ更新: 検査成功後に自動マージ
+- 通常・セキュリティのマイナー／メジャー更新: PRを作成し、手動承認まで保留
+- GitHub Actionsの更新: 月1回PRを作成し、常に手動承認
+
+PRでは`npm audit --audit-level=high`、lint、Cloudflare向け本番ビルドを実行します。自動マージまたは手動マージで`main`が更新されると、GitHub ActionsがCloudflare Workersへ自動デプロイします。
+
+### GitHubに一度だけ登録するproduction secrets
+
+Repository settingsの「Environments」で`production`を作成し、以下をEnvironment secretsとして登録します。
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID`
+
+Cloudflare API tokenは対象アカウントだけに限定し、Workers Scriptsの編集権限と、このWorkerが使用するルートの編集権限だけを付与します。値をリポジトリ内のファイルへ記載しないでください。

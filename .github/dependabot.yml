@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 10
+    groups:
+      security-patch-updates:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+      patch-updates:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+
+  # GitHub Actions自体も監視するが、ワークフロー変更は自動マージしない。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      timezone: "Asia/Tokyo"
