@@ -9,18 +9,28 @@ updates:
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 10
     groups:
-      security-patch-updates:
+      security-updates:
         applies-to: "security-updates"
         patterns:
           - "*"
-        update-types:
-          - "patch"
       patch-updates:
         applies-to: "version-updates"
         patterns:
           - "*"
         update-types:
           - "patch"
+      minor-updates:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+      major-updates:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   # GitHub Actions自体も監視するが、ワークフロー変更は自動マージしない。
   - package-ecosystem: "github-actions"

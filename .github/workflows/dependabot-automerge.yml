@@ -32,7 +32,7 @@ jobs:
           HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           case "$HEAD_BRANCH" in
-            dependabot/npm_and_yarn/patch-updates-*|dependabot/npm_and_yarn/security-patch-updates-*)
+            dependabot/npm_and_yarn/patch-updates-*|dependabot/npm_and_yarn/security-updates-*)
               gh pr merge "$PR_NUMBER" --repo "$REPOSITORY" --squash --delete-branch
               ;;
             *)

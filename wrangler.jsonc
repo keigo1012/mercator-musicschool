@@ -16,6 +16,46 @@
       "zone_name": "mercator-musicschool.com"
     }
   ],
+  // Change this hostname if you want a different fixed Dependabot preview URL.
+  // The preview Worker requires HTTP Basic authentication before serving content.
+  "env": {
+    "dependabot-preview": {
+      "name": "mercator-site-dependabot-preview",
+      "main": "src/preview-auth-worker.mjs",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "preview.mercator-musicschool.com",
+          "custom_domain": true
+        }
+      ],
+      "assets": {
+        "directory": ".open-next/assets",
+        "binding": "ASSETS"
+      },
+      "ratelimits": [
+        {
+          "name": "TRIAL_BOOKING_RATE_LIMITER",
+          "namespace_id": "2026062101",
+          "simple": {
+            "limit": 3,
+            "period": 60
+          }
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "logs": {
+          "enabled": true,
+          "head_sampling_rate": 1
+        },
+        "traces": {
+          "enabled": true,
+          "head_sampling_rate": 0.05
+        }
+      }
+    }
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
