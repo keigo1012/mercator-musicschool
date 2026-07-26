@@ -18,6 +18,7 @@ type ApiState = {
   users: LessonUser[];
 };
 type AdminBookingTab = "new" | "future" | "past" | "search";
+type LessonListTab = "upcoming" | "past";
 
 const card = "rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]";
 const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-full bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
@@ -712,18 +713,35 @@ function BookingPanel({ authUser, state, refresh, setError, setNotice }: { authU
 }
 
 function BookedLessonsCard({ user, onCancel }: { user: LessonUser; onCancel?: (booking: BookedLesson) => void }) {
-  const lessons = [...(user.bookedLessons ?? [])].sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const [selectedTab, setSelectedTab] = useState<LessonListTab>("upcoming");
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const today = useMemo(() => {
+    const current = toTokyoParts(now);
+    return isoDate(current.year, current.month, current.day);
+  }, [now]);
+  const lessons = [...(user.bookedLessons ?? [])]
+    .filter((lesson) => selectedTab === "upcoming" ? lesson.date >= today : lesson.date < today)
+    .sort((a, b) => selectedTab === "upcoming" ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt));
   return (
     <article className={card}>
       <h2 className="text-xl font-black text-slate-950">予約済みレッスン</h2>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className={selectedTab === "upcoming" ? selectedButton : subtleButton} onClick={() => setSelectedTab("upcoming")}>今後</button>
+        <button className={selectedTab === "past" ? selectedButton : subtleButton} onClick={() => setSelectedTab("past")}>過去</button>
+      </div>
       <div className="mt-4 space-y-3">
         {lessons.length ? lessons.map((lesson) => (
           <div key={lesson.id} className="rounded-lg bg-[#f7fbfa] p-3">
             <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
             <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
-            {onCancel ? <button className={`${dangerButton} mt-3`} onClick={() => onCancel(lesson)}>キャンセル</button> : null}
+            {onCancel && !validateLessonDeadline(lesson.date, now) ? <button className={`${dangerButton} mt-3`} onClick={() => onCancel(lesson)}>キャンセル</button> : null}
           </div>
-        )) : <p className="text-sm text-slate-500">予約はまだありません</p>}
+        )) : <p className="text-sm text-slate-500">{selectedTab === "upcoming" ? "今後の予約はありません" : "過去のレッスンはありません"}</p>}
       </div>
     </article>
   );
@@ -926,7 +944,7 @@ function AdminLessonCounts({ authUser, users, refresh, setError, setNotice }: { 
                     <div className="font-black text-slate-950">{user.remainingLessons ?? 0}回</div>
                   </div>
                   <div className="rounded-md bg-[#f7fbfa] px-3 py-2">
-                    <div className="text-xs font-bold text-slate-500">毎月1日の自動付与</div>
+                    <div className="text-xs font-bold text-slate-500">毎月26日の自動付与</div>
                     <div className="font-black text-slate-950">{savedMonthlyGrantCount > 0 ? `${savedMonthlyGrantCount}回` : "なし"}</div>
                   </div>
                 </div>
