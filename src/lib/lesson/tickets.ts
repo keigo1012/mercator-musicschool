@@ -23,7 +23,7 @@ export function monthlyLessonGrantIssueDate(now = new Date()) {
 
 export function lessonTicketExpiryForIssueDate(issuedOn: string) {
   const [year, month] = issuedOn.split("-").map(Number);
-  const expiryMonth = addMonthsTokyo(year, month, 1, 5);
+  const expiryMonth = addMonthsTokyo(year, month, 1, 6);
   const lastDay = new Date(Date.UTC(expiryMonth.year, expiryMonth.month, 0)).getUTCDate();
   return isoDate(expiryMonth.year, expiryMonth.month, lastDay);
 }

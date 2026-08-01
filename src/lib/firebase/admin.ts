@@ -9,6 +9,7 @@ type FirestoreValue =
   | { integerValue: string }
   | { doubleValue: number }
   | { timestampValue: string }
+  | { referenceValue: string }
   | { arrayValue: { values?: FirestoreValue[] } }
   | { mapValue: { fields?: FirestoreFields } };
 
@@ -132,6 +133,7 @@ function decodeFirestoreValue(value: FirestoreValue | undefined): unknown {
   if ("integerValue" in value) return Number(value.integerValue);
   if ("doubleValue" in value) return value.doubleValue;
   if ("timestampValue" in value) return value.timestampValue;
+  if ("referenceValue" in value) return value.referenceValue;
   if ("arrayValue" in value) return (value.arrayValue.values ?? []).map(decodeFirestoreValue);
   if ("mapValue" in value) return decodeFirestoreFields(value.mapValue.fields ?? {});
   return undefined;
@@ -172,6 +174,13 @@ export class DocumentSnapshot {
 export class QuerySnapshot {
   constructor(public docs: DocumentSnapshot[]) {}
 }
+
+export type FirestorePageOptions = {
+  filters?: Array<{ field: string; op: "LESS_THAN" | "GREATER_THAN_OR_EQUAL"; value: string }>;
+  orderBy: { field: string; direction: "ASCENDING" | "DESCENDING" };
+  limit: number;
+  cursor?: { value: string; id: string };
+};
 
 export class DocumentReference {
   constructor(public collectionName: string, public id: string) {}
@@ -237,6 +246,36 @@ class CollectionReference {
   async get() {
     const data = await firestoreFetch(`${documentsPath()}/${this.collectionName}`) as { documents?: Array<{ name: string; fields?: FirestoreFields }> };
     const docs = (data.documents ?? []).map((document) => new DocumentSnapshot(new DocumentReference(this.collectionName, document.name.split("/").pop() ?? ""), document));
+    return new QuerySnapshot(docs);
+  }
+  async getPage(options: FirestorePageOptions) {
+    const filters = options.filters ?? [];
+    const fieldFilters = filters.map((filter) => ({
+      fieldFilter: { field: { fieldPath: filter.field }, op: filter.op, value: encodeFirestoreValue(filter.value) },
+    }));
+    const where = fieldFilters.length === 0 ? undefined : fieldFilters.length === 1 ? fieldFilters[0] : { compositeFilter: { op: "AND", filters: fieldFilters } };
+    const startAt = options.cursor
+      ? { before: false, values: [encodeFirestoreValue(options.cursor.value), { referenceValue: docPath(this.collectionName, options.cursor.id) }] }
+      : undefined;
+    const data = await firestoreFetch(`${documentsPath()}:runQuery`, {
+      method: "POST",
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: this.collectionName }],
+          ...(where ? { where } : {}),
+          orderBy: [
+            { field: { fieldPath: options.orderBy.field }, direction: options.orderBy.direction },
+            { field: { fieldPath: "__name__" }, direction: options.orderBy.direction },
+          ],
+          limit: options.limit,
+          ...(startAt ? { startAt } : {}),
+        },
+      }),
+    }) as Array<{ document?: { name: string; fields?: FirestoreFields } }>;
+    const docs = data.filter((item) => item.document).map((item) => {
+      const document = item.document!;
+      return new DocumentSnapshot(new DocumentReference(this.collectionName, document.name.split("/").pop() ?? ""), document);
+    });
     return new QuerySnapshot(docs);
   }
   where(field: string, operator: "==", value: unknown) {

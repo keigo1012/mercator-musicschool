@@ -230,8 +230,10 @@ export function LessonPortal({ mode }: { mode: Mode }) {
     try {
       const me = await apiFetch<{ user: LessonUser }>("/api/me/", authUser);
       const next: ApiState = { user: me.user, bookings: [], closedDays: [], applications: [], users: [] };
-      if (target === "lesson" || target === "admin") {
+      if (target === "lesson") {
         next.bookings = (await apiFetch<{ bookings: LessonBooking[] }>("/api/lesson-bookings/", authUser)).bookings;
+      }
+      if (target === "lesson" || target === "admin") {
         next.closedDays = (await apiFetch<{ closedDays: LessonClosedDay[] }>("/api/lesson-closed-days/", authUser)).closedDays;
       }
       if (target === "admin" && me.user.isAdmin) {
@@ -766,10 +768,17 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
   const [selectedDate, setSelectedDate] = useState("");
   const [query, setQuery] = useState("");
   const [bookingTab, setBookingTab] = useState<AdminBookingTab>("new");
-  const [bookingVisibleCounts, setBookingVisibleCounts] = useState<Record<AdminBookingTab, number>>({ new: 8, future: 8, past: 8, search: 8 });
+  const initialBookingLoad = useRef(false);
+  const [calendarBookings, setCalendarBookings] = useState<LessonBooking[]>([]);
+  const [bookingData, setBookingData] = useState<Record<AdminBookingTab, { bookings: LessonBooking[]; cursors: Record<string, { value: string; id: string } | null>; hasMore: boolean; loaded: boolean }>>({
+    new: { bookings: [], cursors: {}, hasMore: false, loaded: false },
+    future: { bookings: [], cursors: {}, hasMore: false, loaded: false },
+    past: { bookings: [], cursors: {}, hasMore: false, loaded: false },
+    search: { bookings: [], cursors: {}, hasMore: false, loaded: false },
+  });
   const cells = useMemo(() => buildMonthDays(month.year, month.month), [month]);
   const today = todayIso();
-  const bookings = state.bookings
+  const bookings = bookingData[bookingTab].bookings
     .filter((booking) => {
       if (bookingTab !== "search") return true;
       return [booking.bookingType === "trial" ? "体験レッスン" : "通常レッスン", booking.userName, booking.userPhoneNumber, booking.userEmail, formatBookingInstrument(booking), booking.startAt].join(" ").toLowerCase().includes(query.toLowerCase());
@@ -780,11 +789,55 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
       if (bookingTab === "search") return b.startAt.localeCompare(a.startAt);
       return bookingTab === "future" ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt);
     });
-  const visibleBookingCount = bookingVisibleCounts[bookingTab];
-  const visibleBookings = bookings.slice(0, visibleBookingCount);
-  const hasMoreBookings = bookings.length > visibleBookingCount;
+  const visibleBookings = bookings;
+  const hasMoreBookings = bookingData[bookingTab].hasMore;
   const closedById = new Map(state.closedDays.map((closed) => [closed.id, closed]));
-  const bookingById = new Map(state.bookings.map((booking) => [booking.id, booking]));
+  const bookingById = new Map(calendarBookings.map((booking) => [booking.id, booking]));
+
+  const loadCalendarBookings = useCallback(async (targetMonth = month) => {
+    try {
+      const key = `${targetMonth.year}-${String(targetMonth.month).padStart(2, "0")}`;
+      const data = await apiFetch<{ bookings: LessonBooking[] }>(`/api/admin/bookings/?mode=calendar&month=${key}`, authUser);
+      setCalendarBookings(data.bookings);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "予約カレンダーの読み込みに失敗しました。");
+    }
+  }, [authUser, month, setError]);
+
+  const loadBookingPage = useCallback(async (tab: AdminBookingTab, append = false) => {
+    const current = bookingData[tab];
+    try {
+      if (tab === "search") {
+        const data = await apiFetch<{ bookings: LessonBooking[] }>("/api/admin/bookings/?mode=search", authUser);
+        setBookingData((items) => ({ ...items, search: { bookings: data.bookings, cursors: {}, hasMore: false, loaded: true } }));
+        return;
+      }
+      const params = new URLSearchParams({ tab });
+      if (append) {
+        for (const [key, cursor] of Object.entries(current.cursors)) {
+          if (cursor) {
+            params.set(`${key}Cursor`, cursor.value);
+            params.set(`${key}CursorId`, cursor.id);
+          }
+        }
+      }
+      const data = await apiFetch<{ bookings: LessonBooking[]; cursors: Record<string, { value: string; id: string } | null>; hasMore: boolean }>(`/api/admin/bookings/?${params}`, authUser);
+      setBookingData((items) => ({ ...items, [tab]: { bookings: append ? [...items[tab].bookings, ...data.bookings] : data.bookings, cursors: data.cursors, hasMore: data.hasMore, loaded: true } }));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "予約一覧の読み込みに失敗しました。");
+    }
+  }, [authUser, bookingData, setError]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadCalendarBookings(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCalendarBookings]);
+  useEffect(() => {
+    if (initialBookingLoad.current) return;
+    initialBookingLoad.current = true;
+    const timer = window.setTimeout(() => { void loadBookingPage("new"); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadBookingPage]); // 初回は新着8件のみ取得
 
   async function call(path: string, init: RequestInit) {
     setError("");
@@ -792,6 +845,7 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
       await apiFetch(path, authUser, init);
       setNotice("更新しました。");
       await refresh();
+      await loadCalendarBookings();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "更新に失敗しました。");
     }
@@ -807,7 +861,7 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
             const dayId = cell.date?.replaceAll("-", "") ?? "";
             const dayClosed = closedById.get(dayId);
             const slotClosed = state.closedDays.some((closed) => closed.date === cell.date && closed.scope === "slot");
-            const hasBooking = state.bookings.some((booking) => booking.date === cell.date);
+            const hasBooking = calendarBookings.some((booking) => booking.date === cell.date);
             return <button key={cell.key} disabled={!cell.date} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-orange-300 bg-orange-50" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
           })}</div>
         </article>
@@ -868,16 +922,15 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-black text-slate-950">レッスン予約</h2><button className={subtleButton} onClick={refresh}>更新</button></div>
         <div className="mb-4 flex flex-wrap gap-2">
           <button className={bookingTab === "new" ? selectedButton : subtleButton} onClick={() => setBookingTab("new")}>新着</button>
-          <button className={bookingTab === "future" ? selectedButton : subtleButton} onClick={() => setBookingTab("future")}>今後</button>
-          <button className={bookingTab === "past" ? selectedButton : subtleButton} onClick={() => setBookingTab("past")}>過去</button>
-          <button className={bookingTab === "search" ? selectedButton : subtleButton} onClick={() => setBookingTab("search")}>検索</button>
+          <button className={bookingTab === "future" ? selectedButton : subtleButton} onClick={() => { setBookingTab("future"); if (!bookingData.future.loaded) void loadBookingPage("future"); }}>今後</button>
+          <button className={bookingTab === "past" ? selectedButton : subtleButton} onClick={() => { setBookingTab("past"); if (!bookingData.past.loaded) void loadBookingPage("past"); }}>過去</button>
+          <button className={bookingTab === "search" ? selectedButton : subtleButton} onClick={() => { setBookingTab("search"); if (!bookingData.search.loaded) void loadBookingPage("search"); }}>検索</button>
         </div>
         {bookingTab === "search" ? <input className={inputClass} placeholder="全ての予約から検索" value={query} onChange={(e) => {
           setQuery(e.target.value);
-          setBookingVisibleCounts((counts) => ({ ...counts, search: 8 }));
         }} /> : null}
         <div className="mt-4 space-y-3">{visibleBookings.length ? visibleBookings.map((booking) => <div key={booking.id} className="rounded-lg bg-[#f7fbfa] p-3"><div className="font-black">{booking.bookingType === "trial" ? "体験レッスン" : "通常レッスン"} / {booking.userName}</div><div className="text-sm text-slate-600">{formatDateJa(booking.date)} {booking.startAt.slice(11, 16)}-{booking.endAt.slice(11, 16)} / {formatBookingInstrument(booking)}{booking.lessonFormat ? ` / ${formatLessonFormat(booking.lessonFormat)}` : ""} / {booking.userPhoneNumber}{booking.bookingType === "trial" && booking.userBirthDate ? ` / 生年月日: ${formatBirthDateWithAgeAndGrade(booking.userBirthDate)}` : ""}</div></div>) : <p className="text-sm text-slate-500">予約情報はありません。</p>}</div>
-        {hasMoreBookings ? <button className={`${subtleButton} mt-4 w-full`} onClick={() => setBookingVisibleCounts((counts) => ({ ...counts, [bookingTab]: counts[bookingTab] + 8 }))}>さらに表示</button> : null}
+        {hasMoreBookings ? <button className={`${subtleButton} mt-4 w-full`} onClick={() => void loadBookingPage(bookingTab, true)}>さらに表示</button> : null}
       </article>
       <AdminLessonCounts authUser={authUser} users={state.users} refresh={refresh} setError={setError} setNotice={setNotice} />
     </div>
