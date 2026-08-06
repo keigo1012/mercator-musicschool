@@ -2,15 +2,21 @@ import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
 import { jsonError, requireUser } from "@/lib/firebase/api";
 import { createLessonBooking } from "@/lib/lesson/server";
+import { lessonBookingDateRange } from "@/lib/lesson/dates";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
+    const { startDate, endDateExclusive } = lessonBookingDateRange();
+    const filters = [
+      { field: "date", op: "GREATER_THAN_OR_EQUAL" as const, value: startDate },
+      { field: "date", op: "LESS_THAN" as const, value: endDateExclusive },
+    ];
     const [lessonSnap, trialSnap] = await Promise.all([
-      adminDb.collection("lessonBookings").get(),
-      adminDb.collection("trialBookings").get(),
+      adminDb.collection("lessonBookings").getPage({ filters, orderBy: { field: "date", direction: "ASCENDING" }, limit: 1000 }),
+      adminDb.collection("trialBookings").getPage({ filters, orderBy: { field: "date", direction: "ASCENDING" }, limit: 1000 }),
     ]);
     const sanitizeBooking = (data: Record<string, unknown>, bookingType: "lesson" | "trial") => ({
       id: data.id,
@@ -22,6 +28,7 @@ export async function GET(request: Request) {
       userName: bookingType === "trial" ? "体験レッスン" : "予約済み",
       userEmail: "",
       userPhoneNumber: "",
+      isOwn: bookingType === "lesson" && data.userId === user.id,
     });
     const lessonBookings = lessonSnap.docs.map((doc) => {
       const data = serializeFirestore({ id: doc.id, bookingType: "lesson", ...doc.data() }) as Record<string, unknown>;

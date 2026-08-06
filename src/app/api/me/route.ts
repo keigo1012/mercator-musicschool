@@ -6,7 +6,13 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    return NextResponse.json({ user });
+    return NextResponse.json({
+      user: {
+        ...user,
+        bookedLessons: [],
+        bookedLessonDates: [],
+      },
+    });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "ユーザー取得に失敗しました。", 401);
   }

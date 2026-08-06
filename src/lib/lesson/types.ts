@@ -61,6 +61,7 @@ export type LessonBooking = BookedLesson & {
   userBirthDate?: string;
   lessonFormat?: "inPerson" | "online";
   bookingType?: "lesson" | "trial";
+  isOwn?: boolean;
   updatedAt?: string;
 };
 

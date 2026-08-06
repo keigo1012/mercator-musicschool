@@ -176,7 +176,7 @@ export class QuerySnapshot {
 }
 
 export type FirestorePageOptions = {
-  filters?: Array<{ field: string; op: "LESS_THAN" | "GREATER_THAN_OR_EQUAL"; value: string }>;
+  filters?: Array<{ field: string; op: "EQUAL" | "LESS_THAN" | "GREATER_THAN_OR_EQUAL"; value: string }>;
   orderBy: { field: string; direction: "ASCENDING" | "DESCENDING" };
   limit: number;
   cursor?: { value: string; id: string };

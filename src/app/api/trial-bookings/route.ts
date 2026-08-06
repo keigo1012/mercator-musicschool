@@ -7,6 +7,7 @@ import { getInstrumentLabel } from "@/lib/lesson/constants";
 import { formatDateJa, pad2 } from "@/lib/lesson/dates";
 import { checkTrialBookingRateLimit } from "@/lib/cloudflare/rate-limit";
 import { verifyTurnstileToken } from "@/lib/turnstile/verify";
+import { lessonBookingDateRange } from "@/lib/lesson/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +17,15 @@ function lessonFormatLabel(value: unknown) {
 
 export async function GET() {
   try {
+    const { startDate, endDateExclusive } = lessonBookingDateRange();
+    const filters = [
+      { field: "date", op: "GREATER_THAN_OR_EQUAL" as const, value: startDate },
+      { field: "date", op: "LESS_THAN" as const, value: endDateExclusive },
+    ];
     const [lessonBookingsSnap, trialBookingsSnap, closedDaysSnap] = await Promise.all([
-      adminDb.collection("lessonBookings").get(),
-      adminDb.collection("trialBookings").get(),
-      adminDb.collection("lessonClosedDays").get(),
+      adminDb.collection("lessonBookings").getPage({ filters, orderBy: { field: "date", direction: "ASCENDING" }, limit: 1000 }),
+      adminDb.collection("trialBookings").getPage({ filters, orderBy: { field: "date", direction: "ASCENDING" }, limit: 1000 }),
+      adminDb.collection("lessonClosedDays").getPage({ filters, orderBy: { field: "date", direction: "ASCENDING" }, limit: 1000 }),
     ]);
     const bookedSlotIds = [
       ...lessonBookingsSnap.docs.map((doc) => doc.id),

@@ -19,6 +19,12 @@ type ApiState = {
 };
 type AdminBookingTab = "new" | "future" | "past" | "search";
 type LessonListTab = "upcoming" | "past";
+type LessonListPage = {
+  lessons: BookedLesson[];
+  cursor: { value: string; id: string } | null;
+  hasMore: boolean;
+  loaded: boolean;
+};
 
 const card = "rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]";
 const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-full bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
@@ -133,14 +139,6 @@ function memberFormFromDate(member: { name?: string; birthDate?: string }) {
   };
 }
 
-function latestLessonInstrumentForMember(user: LessonUser, memberName: string) {
-  const lessons = [...(user.bookedLessons ?? [])]
-    .filter((lesson) => (memberName ? lesson.memberName === memberName : true))
-    .sort((a, b) => b.startAt.localeCompare(a.startAt));
-
-  return lessons[0]?.instrument || DEFAULT_INSTRUMENT;
-}
-
 function findEarliestBookableLessonDate(bookings: LessonBooking[], closedDays: LessonClosedDay[]) {
   const bookingIds = new Set(bookings.map((booking) => booking.id));
   const closedById = new Map(closedDays.map((closed) => [closed.id, closed]));
@@ -234,7 +232,8 @@ export function LessonPortal({ mode }: { mode: Mode }) {
         next.bookings = (await apiFetch<{ bookings: LessonBooking[] }>("/api/lesson-bookings/", authUser)).bookings;
       }
       if (target === "lesson" || target === "admin") {
-        next.closedDays = (await apiFetch<{ closedDays: LessonClosedDay[] }>("/api/lesson-closed-days/", authUser)).closedDays;
+        const closedDaysPath = target === "admin" ? "/api/admin/closed-days/" : "/api/lesson-closed-days/";
+        next.closedDays = (await apiFetch<{ closedDays: LessonClosedDay[] }>(closedDaysPath, authUser)).closedDays;
       }
       if (target === "admin" && me.user.isAdmin) {
         next.applications = (await apiFetch<{ applications: LessonApplication[] }>("/api/admin/lesson-applications/", authUser)).applications;
@@ -287,7 +286,7 @@ export function LessonPortal({ mode }: { mode: Mode }) {
       {error ? <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p> : null}
       {notice ? <p className="mb-4 rounded-lg bg-[#EAF6FD] px-4 py-3 text-sm font-bold text-[#015F96]">{notice}</p> : null}
       {loading && <p className="mb-4 text-sm font-bold text-slate-500">更新中です。</p>}
-      {mode === "mypage" && state.user ? <MyPage user={state.user} /> : null}
+      {mode === "mypage" && state.user ? <MyPage authUser={authUser} user={state.user} /> : null}
       {mode === "lesson" && state.user ? <LessonPage authUser={authUser} state={state} refresh={() => refresh("lesson")} setError={setError} setNotice={setNotice} /> : null}
       {mode === "admin" && state.user ? <AdminPage authUser={authUser} state={state} refresh={() => refresh("admin")} setError={setError} setNotice={setNotice} /> : null}
       <div className="mt-8 flex justify-center border-t border-slate-950/10 pt-6">
@@ -349,7 +348,7 @@ function AuthPanel({ onError, error }: { onError: (message: string) => void; err
   );
 }
 
-function MyPage({ user }: { user: LessonUser }) {
+function MyPage({ authUser, user }: { authUser: User; user: LessonUser }) {
   const status = user.isBlockedByAdmin ? "休会中" : user.lessonApplicationStatus === "pending" ? "承認待ち" : user.lessonApplicationStatus === "approved" ? "承認済み" : user.lessonApplicationStatus === "rejected" ? "却下" : "未申込";
   const expiringTickets = expiryWarningTickets(user.lessonTickets ?? []);
   return (
@@ -372,7 +371,7 @@ function MyPage({ user }: { user: LessonUser }) {
           {!user.isBlockedByAdmin && user.hasLessonPlan ? <Link className={primaryButton} href="/lesson">レッスン予約へ</Link> : null}
         </div>
       </article>
-      <BookedLessonsCard user={user} />
+      <BookedLessonsCard key={`${user.id}-${user.updatedAt ?? ""}`} authUser={authUser} />
     </div>
   );
 }
@@ -545,11 +544,11 @@ function BookingPanel({ authUser, state, refresh, setError, setNotice }: { authU
   const [month, setMonth] = useState({ year: Number(initialDate.slice(0, 4)), month: Number(initialDate.slice(5, 7)) });
   const [selectedDate, setSelectedDate] = useState(earliestBookableDate);
   const [lessonFormat, setLessonFormat] = useState<"inPerson" | "online">("inPerson");
-  const [instrument, setInstrument] = useState(() => latestLessonInstrumentForMember(user, initialMemberName));
+  const [instrument, setInstrument] = useState(user.selectedLessonInstrument || DEFAULT_INSTRUMENT);
   const [memberName, setMemberName] = useState(initialMemberName);
   const [busy, setBusy] = useState("");
   const cells = useMemo(() => buildMonthDays(month.year, month.month), [month]);
-  const ownBookingIds = useMemo(() => new Set((user.bookedLessons ?? []).map((booking) => booking.id)), [user.bookedLessons]);
+  const ownBookingIds = useMemo(() => new Set(state.bookings.filter((booking) => booking.isOwn).map((booking) => booking.id)), [state.bookings]);
   const bookingById = useMemo(() => new Map(state.bookings.map((booking) => [booking.id, booking])), [state.bookings]);
   const closedById = useMemo(() => new Map(state.closedDays.map((closed) => [closed.id, closed])), [state.closedDays]);
 
@@ -649,7 +648,6 @@ function BookingPanel({ authUser, state, refresh, setError, setNotice }: { authU
                     className={memberName === member.name ? selectedButton : subtleButton}
                     onClick={() => {
                       setMemberName(member.name);
-                      setInstrument(latestLessonInstrumentForMember(user, member.name));
                     }}
                   >
                     {member.name}
@@ -709,41 +707,88 @@ function BookingPanel({ authUser, state, refresh, setError, setNotice }: { authU
           </article>
         ) : null}
       </div>
-      <BookedLessonsCard user={user} onCancel={cancelBooking} />
+      <BookedLessonsCard key={`${user.id}-${user.updatedAt ?? ""}`} authUser={authUser} onCancel={cancelBooking} />
     </div>
   );
 }
 
-function BookedLessonsCard({ user, onCancel }: { user: LessonUser; onCancel?: (booking: BookedLesson) => void }) {
+function emptyLessonListPage(): LessonListPage {
+  return { lessons: [], cursor: null, hasMore: false, loaded: false };
+}
+
+function BookedLessonsCard({ authUser, onCancel }: { authUser: User; onCancel?: (booking: BookedLesson) => void }) {
   const [selectedTab, setSelectedTab] = useState<LessonListTab>("upcoming");
   const [now, setNow] = useState(() => new Date());
+  const [pages, setPages] = useState<Record<LessonListTab, LessonListPage>>({ upcoming: emptyLessonListPage(), past: emptyLessonListPage() });
+  const [loadingTab, setLoadingTab] = useState<LessonListTab | null>(null);
+  const [listError, setListError] = useState("");
+
+  const loadLessons = useCallback(async (tab: LessonListTab, append = false) => {
+    const currentPage = pages[tab];
+    if (loadingTab || (append && !currentPage.hasMore)) return;
+    setLoadingTab(tab);
+    setListError("");
+    try {
+      const params = new URLSearchParams({ tab });
+      if (append && currentPage.cursor) {
+        params.set("cursor", currentPage.cursor.value);
+        params.set("cursorId", currentPage.cursor.id);
+      }
+      const data = await apiFetch<{ lessons: BookedLesson[]; cursor: { value: string; id: string } | null; hasMore: boolean }>(`/api/my-lessons/?${params}`, authUser);
+      setPages((current) => ({
+        ...current,
+        [tab]: {
+          lessons: append ? [...current[tab].lessons, ...data.lessons] : data.lessons,
+          cursor: data.cursor,
+          hasMore: data.hasMore,
+          loaded: true,
+        },
+      }));
+    } catch (caught) {
+      setListError(caught instanceof Error ? caught.message : "レッスン履歴の取得に失敗しました。");
+    } finally {
+      setLoadingTab(null);
+    }
+  }, [authUser, loadingTab, pages]);
+
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
   }, []);
 
-  const today = useMemo(() => {
-    const current = toTokyoParts(now);
-    return isoDate(current.year, current.month, current.day);
-  }, [now]);
-  const lessons = [...(user.bookedLessons ?? [])]
-    .filter((lesson) => selectedTab === "upcoming" ? lesson.date >= today : lesson.date < today)
-    .sort((a, b) => selectedTab === "upcoming" ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt));
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadLessons("upcoming"), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const lessons = pages[selectedTab].lessons;
+
+  function selectTab(tab: LessonListTab) {
+    setSelectedTab(tab);
+    if (!pages[tab].loaded) void loadLessons(tab);
+  }
+
   return (
     <article className={card}>
       <h2 className="text-xl font-black text-slate-950">予約済みレッスン</h2>
       <div className="mt-4 flex flex-wrap gap-2">
-        <button className={selectedTab === "upcoming" ? selectedButton : subtleButton} onClick={() => setSelectedTab("upcoming")}>今後</button>
-        <button className={selectedTab === "past" ? selectedButton : subtleButton} onClick={() => setSelectedTab("past")}>過去</button>
+        <button className={selectedTab === "upcoming" ? selectedButton : subtleButton} onClick={() => selectTab("upcoming")}>今後</button>
+        <button className={selectedTab === "past" ? selectedButton : subtleButton} onClick={() => selectTab("past")}>過去</button>
       </div>
       <div className="mt-4 space-y-3">
+        {listError ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700">{listError}</p> : null}
         {lessons.length ? lessons.map((lesson) => (
           <div key={lesson.id} className="rounded-lg bg-[#f7fbfa] p-3">
             <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
             <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
             {onCancel && !validateLessonDeadline(lesson.date, now) ? <button className={`${dangerButton} mt-3`} onClick={() => onCancel(lesson)}>キャンセル</button> : null}
           </div>
-        )) : <p className="text-sm text-slate-500">{selectedTab === "upcoming" ? "今後の予約はありません" : "過去のレッスンはありません"}</p>}
+        )) : pages[selectedTab].loaded && loadingTab !== selectedTab ? <p className="text-sm text-slate-500">{selectedTab === "upcoming" ? "今後の予約はありません" : "過去のレッスンはありません"}</p> : null}
+        {loadingTab === selectedTab ? <p className="text-sm font-bold text-slate-500">読み込み中です。</p> : null}
+        {pages[selectedTab].loaded && pages[selectedTab].hasMore ? (
+          <button className={`${subtleButton} w-full`} disabled={Boolean(loadingTab)} onClick={() => void loadLessons(selectedTab, true)}>さらに表示</button>
+        ) : null}
       </div>
     </article>
   );

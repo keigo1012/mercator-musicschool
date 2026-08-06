@@ -118,6 +118,18 @@ export function addMonthsTokyo(year: number, month: number, day: number, months:
   };
 }
 
+export function lessonBookingDateRange(now = new Date()) {
+  const current = toTokyoParts(now);
+  const start = new Date(Date.UTC(current.year, current.month - 1, current.day + 1));
+  const max = addMonthsTokyo(current.year, current.month, current.day, 2);
+  const end = new Date(Date.UTC(max.year, max.month - 1, max.day + 1));
+
+  return {
+    startDate: isoDate(start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate()),
+    endDateExclusive: isoDate(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate()),
+  };
+}
+
 export function validateLessonDeadline(date: string, now = new Date()) {
   const [year, month, day] = date.split("-").map(Number);
   const current = toTokyoParts(now);
