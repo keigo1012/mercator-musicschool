@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase/client";
-import { buildMonthDays, bookingIdFromDateHour, formatDateJa, formatSlotJa, getJapaneseSchoolGrade, isoDate, isValidBirthDate, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
+import { buildMonthDays, bookingIdFromDateHour, formatDateJa, formatSlotJa, getJapaneseSchoolGrade, isoDate, isValidBirthDate, monthEndAfterMonths, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
 import { DEFAULT_INSTRUMENT, getInstrumentLabel, INSTRUMENTS, isDefaultClosedLessonHour, LESSON_HOURS } from "@/lib/lesson/constants";
 import type { BookedLesson, LessonApplication, LessonBooking, LessonClosedDay, LessonUser } from "@/lib/lesson/types";
 import { expiryWarningTickets } from "@/lib/lesson/tickets";
@@ -15,9 +15,8 @@ type ApiState = {
   bookings: LessonBooking[];
   closedDays: LessonClosedDay[];
   applications: LessonApplication[];
-  users: LessonUser[];
 };
-type AdminBookingTab = "new" | "future" | "past" | "search";
+type AdminBookingTab = "new" | "future" | "past";
 type LessonListTab = "upcoming" | "past";
 type LessonListPage = {
   lessons: BookedLesson[];
@@ -42,7 +41,7 @@ function todayIso() {
 }
 
 function defaultTicketExpiry() {
-  return "2027-06-30";
+  return monthEndAfterMonths(6);
 }
 
 function formatTicketSource(source: string) {
@@ -179,7 +178,7 @@ async function apiFetch<T>(path: string, authUser: User, init: RequestInit = {})
 export function LessonPortal({ mode }: { mode: Mode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [state, setState] = useState<ApiState>({ user: null, bookings: [], closedDays: [], applications: [], users: [] });
+  const [state, setState] = useState<ApiState>({ user: null, bookings: [], closedDays: [], applications: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -227,7 +226,7 @@ export function LessonPortal({ mode }: { mode: Mode }) {
     setError("");
     try {
       const me = await apiFetch<{ user: LessonUser }>("/api/me/", authUser);
-      const next: ApiState = { user: me.user, bookings: [], closedDays: [], applications: [], users: [] };
+      const next: ApiState = { user: me.user, bookings: [], closedDays: [], applications: [] };
       if (target === "lesson") {
         next.bookings = (await apiFetch<{ bookings: LessonBooking[] }>("/api/lesson-bookings/", authUser)).bookings;
       }
@@ -237,7 +236,6 @@ export function LessonPortal({ mode }: { mode: Mode }) {
       }
       if (target === "admin" && me.user.isAdmin) {
         next.applications = (await apiFetch<{ applications: LessonApplication[] }>("/api/admin/lesson-applications/", authUser)).applications;
-        next.users = (await apiFetch<{ users: LessonUser[] }>("/api/admin/users/", authUser)).users;
       }
       setState(next);
     } catch (caught) {
@@ -250,7 +248,7 @@ export function LessonPortal({ mode }: { mode: Mode }) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (authUser) void refresh();
-      if (!authUser) setState({ user: null, bookings: [], closedDays: [], applications: [], users: [] });
+      if (!authUser) setState({ user: null, bookings: [], closedDays: [], applications: [] });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [authUser, mode, refresh]);
@@ -796,13 +794,30 @@ function BookedLessonsCard({ authUser, onCancel }: { authUser: User; onCancel?: 
 
 function AdminPage({ authUser, state, refresh, setError, setNotice }: { authUser: User; state: ApiState; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
   const [tab, setTab] = useState<"lesson" | "applications" | "members">("lesson");
+  const [memberUsers, setMemberUsers] = useState<LessonUser[]>([]);
+  const [membersLoaded, setMembersLoaded] = useState(false);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const loadMemberUsers = useCallback(async () => {
+    if (membersLoading) return;
+    setMembersLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch<{ users: LessonUser[] }>("/api/admin/users/", authUser);
+      setMemberUsers(data.users);
+      setMembersLoaded(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "会員情報の読み込みに失敗しました。");
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [authUser, membersLoading, setError]);
   if (!state.user?.isAdmin) return <article className={card}><h2 className="text-xl font-black text-red-700">管理者権限がありません</h2></article>;
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["applications", "申込承認"], ["members", "会員管理"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => setTab(id as typeof tab)}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["applications", "申込承認"], ["members", "会員管理"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => { setTab(id as typeof tab); if (id === "members" && !membersLoaded) void loadMemberUsers(); }}>{label}</button>)}</div>
       {tab === "lesson" ? <AdminLessonTab authUser={authUser} state={state} refresh={refresh} setError={setError} setNotice={setNotice} /> : null}
       {tab === "applications" ? <AdminApplications authUser={authUser} applications={state.applications} refresh={refresh} setError={setError} setNotice={setNotice} /> : null}
-      {tab === "members" ? <AdminMemberUsers authUser={authUser} users={state.users} refresh={refresh} setError={setError} setNotice={setNotice} /> : null}
+      {tab === "members" ? membersLoading && !membersLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">会員情報を読み込み中です。</p></article> : <AdminMemberUsers authUser={authUser} users={memberUsers} refresh={loadMemberUsers} setError={setError} setNotice={setNotice} /> : null}
     </div>
   );
 }
@@ -811,7 +826,6 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
   const now = toTokyoParts();
   const [month, setMonth] = useState({ year: now.year, month: now.month });
   const [selectedDate, setSelectedDate] = useState("");
-  const [query, setQuery] = useState("");
   const [bookingTab, setBookingTab] = useState<AdminBookingTab>("new");
   const initialBookingLoad = useRef(false);
   const [calendarBookings, setCalendarBookings] = useState<LessonBooking[]>([]);
@@ -819,19 +833,13 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
     new: { bookings: [], cursors: {}, hasMore: false, loaded: false },
     future: { bookings: [], cursors: {}, hasMore: false, loaded: false },
     past: { bookings: [], cursors: {}, hasMore: false, loaded: false },
-    search: { bookings: [], cursors: {}, hasMore: false, loaded: false },
   });
   const cells = useMemo(() => buildMonthDays(month.year, month.month), [month]);
   const today = todayIso();
   const bookings = bookingData[bookingTab].bookings
-    .filter((booking) => {
-      if (bookingTab !== "search") return true;
-      return [booking.bookingType === "trial" ? "体験レッスン" : "通常レッスン", booking.userName, booking.userPhoneNumber, booking.userEmail, formatBookingInstrument(booking), booking.startAt].join(" ").toLowerCase().includes(query.toLowerCase());
-    })
-    .filter((booking) => bookingTab === "new" || bookingTab === "search" || (bookingTab === "future" ? booking.date >= today : booking.date < today))
+    .filter((booking) => bookingTab === "new" || (bookingTab === "future" ? booking.date >= today : booking.date < today))
     .sort((a, b) => {
       if (bookingTab === "new") return bookingCreatedAtValue(b).localeCompare(bookingCreatedAtValue(a));
-      if (bookingTab === "search") return b.startAt.localeCompare(a.startAt);
       return bookingTab === "future" ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt);
     });
   const visibleBookings = bookings;
@@ -852,11 +860,6 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
   const loadBookingPage = useCallback(async (tab: AdminBookingTab, append = false) => {
     const current = bookingData[tab];
     try {
-      if (tab === "search") {
-        const data = await apiFetch<{ bookings: LessonBooking[] }>("/api/admin/bookings/?mode=search", authUser);
-        setBookingData((items) => ({ ...items, search: { bookings: data.bookings, cursors: {}, hasMore: false, loaded: true } }));
-        return;
-      }
       const params = new URLSearchParams({ tab });
       if (append) {
         for (const [key, cursor] of Object.entries(current.cursors)) {
@@ -969,108 +972,11 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
           <button className={bookingTab === "new" ? selectedButton : subtleButton} onClick={() => setBookingTab("new")}>新着</button>
           <button className={bookingTab === "future" ? selectedButton : subtleButton} onClick={() => { setBookingTab("future"); if (!bookingData.future.loaded) void loadBookingPage("future"); }}>今後</button>
           <button className={bookingTab === "past" ? selectedButton : subtleButton} onClick={() => { setBookingTab("past"); if (!bookingData.past.loaded) void loadBookingPage("past"); }}>過去</button>
-          <button className={bookingTab === "search" ? selectedButton : subtleButton} onClick={() => { setBookingTab("search"); if (!bookingData.search.loaded) void loadBookingPage("search"); }}>検索</button>
         </div>
-        {bookingTab === "search" ? <input className={inputClass} placeholder="全ての予約から検索" value={query} onChange={(e) => {
-          setQuery(e.target.value);
-        }} /> : null}
         <div className="mt-4 space-y-3">{visibleBookings.length ? visibleBookings.map((booking) => <div key={booking.id} className="rounded-lg bg-[#f7fbfa] p-3"><div className="font-black">{booking.bookingType === "trial" ? "体験レッスン" : "通常レッスン"} / {booking.userName}</div><div className="text-sm text-slate-600">{formatDateJa(booking.date)} {booking.startAt.slice(11, 16)}-{booking.endAt.slice(11, 16)} / {formatBookingInstrument(booking)}{booking.lessonFormat ? ` / ${formatLessonFormat(booking.lessonFormat)}` : ""} / {booking.userPhoneNumber}{booking.bookingType === "trial" && booking.userBirthDate ? ` / 生年月日: ${formatBirthDateWithAgeAndGrade(booking.userBirthDate)}` : ""}</div></div>) : <p className="text-sm text-slate-500">予約情報はありません。</p>}</div>
         {hasMoreBookings ? <button className={`${subtleButton} mt-4 w-full`} onClick={() => void loadBookingPage(bookingTab, true)}>さらに表示</button> : null}
       </article>
-      <AdminLessonCounts authUser={authUser} users={state.users} refresh={refresh} setError={setError} setNotice={setNotice} />
     </div>
-  );
-}
-
-function AdminLessonCounts({ authUser, users, refresh, setError, setNotice }: { authUser: User; users: LessonUser[]; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
-  const [query, setQuery] = useState("");
-  const [values, setValues] = useState<Record<string, { monthlyLessonGrantCount: number; issueCount: number; expiresOn: string }>>({});
-  const targets = users.filter((user) => user.hasLessonPlan || user.lessonApplicationStatus !== "none" || user.lessonFullName);
-  const filtered = targets
-    .filter((user) => lessonUserSearchText(user).includes(query.toLowerCase()))
-    .sort((a, b) => lessonUserSortName(a).localeCompare(lessonUserSortName(b), "ja"));
-  function currentValues(user: LessonUser) {
-    return values[user.id] ?? { monthlyLessonGrantCount: Number(user.monthlyLessonGrantCount ?? 0) > 0 ? user.monthlyLessonGrantCount : 2, issueCount: 0, expiresOn: defaultTicketExpiry() };
-  }
-  async function saveMonthlyGrant(user: LessonUser) {
-    try {
-      await apiFetch(`/api/admin/users/${user.id}/monthly-grant/`, authUser, { method: "PATCH", body: JSON.stringify({ monthlyLessonGrantCount: currentValues(user).monthlyLessonGrantCount }) });
-      setNotice("保存しました。");
-      await refresh();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "保存に失敗しました。");
-    }
-  }
-  async function issueTicket(user: LessonUser) {
-    try {
-      const current = currentValues(user);
-      await apiFetch(`/api/admin/users/${user.id}/remaining-lessons/`, authUser, { method: "POST", body: JSON.stringify({ count: current.issueCount, expiresOn: current.expiresOn }) });
-      setNotice("回数券を発行しました。");
-      await refresh();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "回数券発行に失敗しました。");
-    }
-  }
-  async function deleteTicket(user: LessonUser, ticketId: string) {
-    if (!confirm("この回数券を削除しますか？")) return;
-    try {
-      await apiFetch(`/api/admin/users/${user.id}/remaining-lessons/?ticketId=${encodeURIComponent(ticketId)}`, authUser, { method: "DELETE" });
-      setNotice("回数券を削除しました。");
-      await refresh();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "回数券削除に失敗しました。");
-    }
-  }
-  return (
-    <article className={card}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-black">レッスン回数管理</h2>
-        <button className={subtleButton} onClick={refresh}>更新</button>
-      </div>
-      <input className={`${inputClass} mb-4`} placeholder="ユーザー検索" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <div className="space-y-3">
-        {filtered.map((user) => {
-          const current = currentValues(user);
-          const savedMonthlyGrantCount = user.monthlyLessonGrantCount ?? 0;
-          return (
-            <div key={user.id} className="rounded-lg bg-[#f7fbfa] p-3">
-              <div className="font-black">{user.lessonFullName || user.name || "未登録"}</div>
-              <div className="mt-3 rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
-                <div className="flex flex-wrap gap-2">
-                  <div className="rounded-md bg-[#f7fbfa] px-3 py-2">
-                    <div className="text-xs font-bold text-slate-500">現在の残り回数</div>
-                    <div className="font-black text-slate-950">{user.remainingLessons ?? 0}回</div>
-                  </div>
-                  <div className="rounded-md bg-[#f7fbfa] px-3 py-2">
-                    <div className="text-xs font-bold text-slate-500">毎月26日の自動付与</div>
-                    <div className="font-black text-slate-950">{savedMonthlyGrantCount > 0 ? `${savedMonthlyGrantCount}回` : "なし"}</div>
-                  </div>
-                </div>
-                <div className="mt-2 space-y-2 text-sm">
-                  {user.lessonTickets?.length ? user.lessonTickets.map((ticket) => (
-                    <div key={ticket.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#f7fbfa] px-3 py-2">
-                      <span className="font-bold">{ticket.count}回</span>
-                      <span>有効期限 {ticket.expiresOn}</span>
-                      <span className="text-xs text-slate-500">{formatTicketSource(ticket.source)}</span>
-                      <button className={`${dangerButton} min-h-9 px-3 py-1 text-xs`} onClick={() => deleteTicket(user, ticket.id)}>削除</button>
-                    </div>
-                  )) : <p className="text-slate-500">回数券はありません。</p>}
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto_1fr_auto]">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="block text-sm font-bold text-slate-700">単発付与<input className={`${inputClass} mt-2`} inputMode="numeric" pattern="[0-9]*" value={String(current.issueCount)} onChange={(e) => setValues({ ...values, [user.id]: { ...current, issueCount: Number(e.target.value.replace(/\D/g, "")) } })} /></label>
-                  <label className="block text-sm font-bold text-slate-700">有効期限<input className={`${inputClass} mt-2`} type="date" min={todayIso()} value={current.expiresOn} onChange={(e) => setValues({ ...values, [user.id]: { ...current, expiresOn: e.target.value } })} /></label>
-                </div>
-                <button className={`${primaryButton} self-end`} onClick={() => issueTicket(user)}>発行</button>
-                <label className="block text-sm font-bold text-slate-700">毎月自動付与<input className={`${inputClass} mt-2`} inputMode="numeric" pattern="[0-9]*" value={String(current.monthlyLessonGrantCount)} onChange={(e) => setValues({ ...values, [user.id]: { ...current, monthlyLessonGrantCount: Number(e.target.value.replace(/\D/g, "")) } })} /></label>
-                <button className={`${primaryButton} self-end`} onClick={() => saveMonthlyGrant(user)}>保存</button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </article>
   );
 }
 
@@ -1118,6 +1024,12 @@ function AdminApplications({ authUser, applications, refresh, setError, setNotic
 function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { authUser: User; users: LessonUser[]; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
   const [query, setQuery] = useState("");
   const [memberTab, setMemberTab] = useState<"registered" | "unregistered">("registered");
+  const [values, setValues] = useState<Record<string, { monthlyLessonGrantCount: number; issueCount: number; expiresOn: string }>>({});
+  const [historyUserId, setHistoryUserId] = useState("");
+  const [historyLessons, setHistoryLessons] = useState<BookedLesson[]>([]);
+  const [historyCursor, setHistoryCursor] = useState<{ value: string; id: string } | null>(null);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const registeredUsers = users.filter((user) => user.lessonApplicationStatus === "approved" || user.hasLessonPlan);
   const unregisteredUsers = users.filter((user) => user.lessonApplicationStatus !== "approved" && !user.hasLessonPlan);
   const targets = memberTab === "registered" ? registeredUsers : unregisteredUsers;
@@ -1130,9 +1042,77 @@ function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { a
       setError(caught instanceof Error ? caught.message : "更新に失敗しました。");
     }
   }
+  async function loadHistory(user: LessonUser, append = false) {
+    if (historyLoading) return;
+    if (!append && historyUserId === user.id) {
+      setHistoryUserId("");
+      return;
+    }
+    setHistoryLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (append && historyCursor) {
+        params.set("cursor", historyCursor.value);
+        params.set("cursorId", historyCursor.id);
+      }
+      const queryString = params.size ? `?${params}` : "";
+      const data = await apiFetch<{ lessons: BookedLesson[]; cursor: { value: string; id: string } | null; hasMore: boolean }>(`/api/admin/users/${user.id}/lessons${queryString}`, authUser);
+      setHistoryUserId(user.id);
+      setHistoryLessons((current) => append ? [...current, ...data.lessons] : data.lessons);
+      setHistoryCursor(data.cursor);
+      setHistoryHasMore(data.hasMore);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "レッスン履歴の取得に失敗しました。");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+  function currentValues(user: LessonUser) {
+    return values[user.id] ?? { monthlyLessonGrantCount: Number(user.monthlyLessonGrantCount ?? 0) > 0 ? user.monthlyLessonGrantCount : 2, issueCount: 0, expiresOn: defaultTicketExpiry() };
+  }
+  async function saveMonthlyGrant(user: LessonUser) {
+    const count = currentValues(user).monthlyLessonGrantCount;
+    if (!confirm(`毎月26日の自動付与を${count}回に設定しますか？`)) return;
+    try {
+      await apiFetch(`/api/admin/users/${user.id}/monthly-grant/`, authUser, { method: "PATCH", body: JSON.stringify({ monthlyLessonGrantCount: count }) });
+      setNotice("保存しました。");
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "保存に失敗しました。");
+    }
+  }
+  async function issueTicket(user: LessonUser) {
+    const current = currentValues(user);
+    if (!confirm(`単発で${current.issueCount}回を付与しますか？\n有効期限：${current.expiresOn}`)) return;
+    try {
+      await apiFetch(`/api/admin/users/${user.id}/remaining-lessons/`, authUser, { method: "POST", body: JSON.stringify({ count: current.issueCount, expiresOn: current.expiresOn }) });
+      setNotice("回数券を発行しました。");
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "回数券発行に失敗しました。");
+    }
+  }
+  async function deleteTicket(user: LessonUser, ticketId: string) {
+    if (!confirm("この回数券を削除しますか？")) return;
+    try {
+      await apiFetch(`/api/admin/users/${user.id}/remaining-lessons/?ticketId=${encodeURIComponent(ticketId)}`, authUser, { method: "DELETE" });
+      setNotice("回数券を削除しました。");
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "回数券削除に失敗しました。");
+    }
+  }
   const filtered = targets
     .filter((user) => lessonUserSearchText(user).includes(query.toLowerCase()))
     .sort((a, b) => lessonUserSortName(a).localeCompare(lessonUserSortName(b), "ja"));
+  const historyToday = todayIso();
+  const displayedHistoryLessons = [...historyLessons].sort((a, b) => {
+    const aUpcoming = a.date >= historyToday;
+    const bUpcoming = b.date >= historyToday;
+    if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+    return aUpcoming ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt);
+  });
   return (
     <article className={card}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1150,26 +1130,82 @@ function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { a
         </div>
       </div>
       <div className="mt-4 space-y-3">
-        {filtered.length ? filtered.map((user) => (
-          <div key={user.id} className="flex flex-wrap items-start justify-between gap-3 rounded-lg bg-[#f7fbfa] p-3">
-            <div className="min-w-0 flex-1">
-              <div className="font-black">{user.lessonFullName || user.name || "未登録"}</div>
-              <div className="mt-2 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
-                <Info label="電話番号" value={user.lessonPhoneNumber || user.phoneNumber || "未登録"} />
-                <Info label="メールアドレス" value={user.lessonEmail || user.email || "未登録"} />
-                <Info label="生年月日" value={formatBirthDateWithAgeAndGrade(user.lessonBirthDate)} />
-                <Info label="住所" value={user.lessonAddress || "未登録"} />
-              </div>
-              {user.lessonMembers?.length && user.lessonMembers.length >= 2 ? (
-                <div className="mt-2 rounded-lg bg-white p-3 text-sm ring-1 ring-slate-950/10">
-                  <div className="text-xs font-bold text-slate-500">登録会員</div>
-                  <div className="mt-1 font-bold text-slate-900">{user.lessonMembers.map((member) => formatLessonMember(member, true)).join(" / ")}</div>
+        {filtered.length ? filtered.map((user) => {
+          const current = currentValues(user);
+          const savedMonthlyGrantCount = user.monthlyLessonGrantCount ?? 0;
+          return <div key={user.id} className="rounded-lg bg-[#f7fbfa] p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-black">{user.lessonFullName || user.name || "未登録"}</div>
+                <div className="mt-2 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                  <Info label="電話番号" value={user.lessonPhoneNumber || user.phoneNumber || "未登録"} />
+                  <Info label="メールアドレス" value={user.lessonEmail || user.email || "未登録"} />
+                  <Info label="生年月日" value={formatBirthDateWithAgeAndGrade(user.lessonBirthDate)} />
+                  <Info label="住所" value={user.lessonAddress || "未登録"} />
                 </div>
-              ) : null}
+                {user.lessonMembers?.length && user.lessonMembers.length >= 2 ? (
+                  <div className="mt-2 rounded-lg bg-white p-3 text-sm ring-1 ring-slate-950/10">
+                    <div className="text-xs font-bold text-slate-500">登録会員</div>
+                    <div className="mt-1 font-bold text-slate-900">{user.lessonMembers.map((member) => formatLessonMember(member, true)).join(" / ")}</div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className={historyUserId === user.id ? selectedButton : subtleButton} disabled={historyLoading} onClick={() => void loadHistory(user)}>{historyUserId === user.id ? "閉じる" : "履歴"}</button>
+                <button className={user.isBlockedByAdmin ? primaryButton : dangerButton} onClick={() => togglePause(user)}>{user.isBlockedByAdmin ? "解除" : "休会"}</button>
+              </div>
             </div>
-            <button className={user.isBlockedByAdmin ? primaryButton : dangerButton} onClick={() => togglePause(user)}>{user.isBlockedByAdmin ? "解除" : "休会"}</button>
-          </div>
-        )) : <p className="text-sm text-slate-500">該当するユーザーはありません。</p>}
+            {memberTab === "registered" ? (
+              <div className="mt-4 rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
+                <div className="flex flex-wrap gap-2">
+                  <div className="rounded-md bg-[#f7fbfa] px-3 py-2">
+                    <div className="text-xs font-bold text-slate-500">現在の残り回数</div>
+                    <div className="font-black text-slate-950">{user.remainingLessons ?? 0}回</div>
+                  </div>
+                  <div className="rounded-md bg-[#f7fbfa] px-3 py-2">
+                    <div className="text-xs font-bold text-slate-500">毎月26日の自動付与</div>
+                    <div className="font-black text-slate-950">{savedMonthlyGrantCount > 0 ? `${savedMonthlyGrantCount}回` : "なし"}</div>
+                  </div>
+                </div>
+                <div className="mt-2 space-y-2 text-sm">
+                  {user.lessonTickets?.length ? user.lessonTickets.map((ticket) => (
+                    <div key={ticket.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-[#f7fbfa] px-3 py-2">
+                      <span className="font-bold">{ticket.count}回</span>
+                      <span>有効期限 {ticket.expiresOn}</span>
+                      <span className="text-xs text-slate-500">{formatTicketSource(ticket.source)}</span>
+                      <button className={`${dangerButton} min-h-9 px-3 py-1 text-xs`} onClick={() => deleteTicket(user, ticket.id)}>削除</button>
+                    </div>
+                  )) : <p className="text-slate-500">回数券はありません。</p>}
+                </div>
+                <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto_1fr_auto]">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block text-sm font-bold text-slate-700">単発付与<input className={`${inputClass} mt-2`} inputMode="numeric" pattern="[0-9]*" value={String(current.issueCount)} onChange={(e) => setValues({ ...values, [user.id]: { ...current, issueCount: Number(e.target.value.replace(/\D/g, "")) } })} /></label>
+                    <label className="block text-sm font-bold text-slate-700">有効期限<input className={`${inputClass} mt-2`} type="date" min={todayIso()} value={current.expiresOn} onChange={(e) => setValues({ ...values, [user.id]: { ...current, expiresOn: e.target.value } })} /></label>
+                  </div>
+                  <button className={`${primaryButton} self-end`} onClick={() => issueTicket(user)}>発行</button>
+                  <label className="block text-sm font-bold text-slate-700">毎月自動付与<input className={`${inputClass} mt-2`} inputMode="numeric" pattern="[0-9]*" value={String(current.monthlyLessonGrantCount)} onChange={(e) => setValues({ ...values, [user.id]: { ...current, monthlyLessonGrantCount: Number(e.target.value.replace(/\D/g, "")) } })} /></label>
+                  <button className={`${primaryButton} self-end`} onClick={() => saveMonthlyGrant(user)}>保存</button>
+                </div>
+              </div>
+            ) : null}
+            {historyUserId === user.id ? (
+              <div className="mt-4 space-y-3 border-t border-slate-950/10 pt-4">
+                <h3 className="font-black text-slate-950">レッスン履歴</h3>
+                {displayedHistoryLessons.length ? displayedHistoryLessons.map((lesson) => (
+                  <div key={lesson.id} className="rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lesson.date >= historyToday ? "bg-[#EAF6FD] text-[#015F96]" : "bg-slate-100 text-slate-600"}`}>{lesson.date >= historyToday ? "予約済み" : "実施済み"}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
+                  </div>
+                )) : historyLoading ? null : <p className="text-sm text-slate-500">レッスン履歴はありません。</p>}
+                {historyLoading ? <p className="text-sm font-bold text-slate-500">読み込み中です。</p> : null}
+                {historyHasMore ? <button className={`${subtleButton} w-full`} disabled={historyLoading} onClick={() => void loadHistory(user, true)}>さらに表示</button> : null}
+              </div>
+            ) : null}
+          </div>;
+        }) : <p className="text-sm text-slate-500">該当するユーザーはありません。</p>}
       </div>
     </article>
   );

@@ -43,14 +43,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ bookings: results.flat().sort((a, b) => a.startAt.localeCompare(b.startAt)) });
     }
 
-    if (mode === "search") {
-      const results = await Promise.all(COLLECTIONS.map(async (collection) => {
-        const snap = await adminDb.collection(collection).get();
-        return snap.docs.map((doc) => toBooking(collection, doc));
-      }));
-      return NextResponse.json({ bookings: results.flat().sort((a, b) => b.startAt.localeCompare(a.startAt)) });
-    }
-
     const tab = searchParams.get("tab") as BookingTab;
     if (!(["new", "future", "past"] as string[]).includes(tab)) throw new Error("予約一覧の種別が正しくありません。");
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());

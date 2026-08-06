@@ -130,6 +130,12 @@ export function lessonBookingDateRange(now = new Date()) {
   };
 }
 
+export function monthEndAfterMonths(months: number, now = new Date()) {
+  const current = toTokyoParts(now);
+  const end = new Date(Date.UTC(current.year, current.month + months, 0));
+  return isoDate(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate());
+}
+
 export function validateLessonDeadline(date: string, now = new Date()) {
   const [year, month, day] = date.split("-").map(Number);
   const current = toTokyoParts(now);
