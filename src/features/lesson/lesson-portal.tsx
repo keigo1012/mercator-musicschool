@@ -14,7 +14,6 @@ type ApiState = {
   user: LessonUser | null;
   bookings: LessonBooking[];
   closedDays: LessonClosedDay[];
-  applications: LessonApplication[];
 };
 type AdminBookingTab = "new" | "future" | "past";
 type LessonListTab = "upcoming" | "past";
@@ -178,7 +177,7 @@ async function apiFetch<T>(path: string, authUser: User, init: RequestInit = {})
 export function LessonPortal({ mode }: { mode: Mode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [state, setState] = useState<ApiState>({ user: null, bookings: [], closedDays: [], applications: [] });
+  const [state, setState] = useState<ApiState>({ user: null, bookings: [], closedDays: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -226,16 +225,12 @@ export function LessonPortal({ mode }: { mode: Mode }) {
     setError("");
     try {
       const me = await apiFetch<{ user: LessonUser }>("/api/me/", authUser);
-      const next: ApiState = { user: me.user, bookings: [], closedDays: [], applications: [] };
+      const next: ApiState = { user: me.user, bookings: [], closedDays: [] };
       if (target === "lesson") {
         next.bookings = (await apiFetch<{ bookings: LessonBooking[] }>("/api/lesson-bookings/", authUser)).bookings;
       }
-      if (target === "lesson" || target === "admin") {
-        const closedDaysPath = target === "admin" ? "/api/admin/closed-days/" : "/api/lesson-closed-days/";
-        next.closedDays = (await apiFetch<{ closedDays: LessonClosedDay[] }>(closedDaysPath, authUser)).closedDays;
-      }
-      if (target === "admin" && me.user.isAdmin) {
-        next.applications = (await apiFetch<{ applications: LessonApplication[] }>("/api/admin/lesson-applications/", authUser)).applications;
+      if (target === "lesson") {
+        next.closedDays = (await apiFetch<{ closedDays: LessonClosedDay[] }>("/api/lesson-closed-days/", authUser)).closedDays;
       }
       setState(next);
     } catch (caught) {
@@ -248,7 +243,7 @@ export function LessonPortal({ mode }: { mode: Mode }) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (authUser) void refresh();
-      if (!authUser) setState({ user: null, bookings: [], closedDays: [], applications: [] });
+      if (!authUser) setState({ user: null, bookings: [], closedDays: [] });
     }, 0);
     return () => window.clearTimeout(timer);
   }, [authUser, mode, refresh]);
@@ -286,7 +281,7 @@ export function LessonPortal({ mode }: { mode: Mode }) {
       {loading && <p className="mb-4 text-sm font-bold text-slate-500">更新中です。</p>}
       {mode === "mypage" && state.user ? <MyPage authUser={authUser} user={state.user} /> : null}
       {mode === "lesson" && state.user ? <LessonPage authUser={authUser} state={state} refresh={() => refresh("lesson")} setError={setError} setNotice={setNotice} /> : null}
-      {mode === "admin" && state.user ? <AdminPage authUser={authUser} state={state} refresh={() => refresh("admin")} setError={setError} setNotice={setNotice} /> : null}
+      {mode === "admin" && state.user ? <AdminPage authUser={authUser} state={state} setError={setError} setNotice={setNotice} /> : null}
       <div className="mt-8 flex justify-center border-t border-slate-950/10 pt-6">
         <button className={subtleButton} onClick={handleLogout}>ログアウト</button>
       </div>
@@ -792,11 +787,15 @@ function BookedLessonsCard({ authUser, onCancel }: { authUser: User; onCancel?: 
   );
 }
 
-function AdminPage({ authUser, state, refresh, setError, setNotice }: { authUser: User; state: ApiState; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
+function AdminPage({ authUser, state, setError, setNotice }: { authUser: User; state: ApiState; setError: (m: string) => void; setNotice: (m: string) => void }) {
   const [tab, setTab] = useState<"lesson" | "applications" | "members">("lesson");
+  const [openedTabs, setOpenedTabs] = useState<Set<"lesson" | "applications" | "members">>(() => new Set(["lesson"]));
   const [memberUsers, setMemberUsers] = useState<LessonUser[]>([]);
   const [membersLoaded, setMembersLoaded] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
+  const [applications, setApplications] = useState<LessonApplication[]>([]);
+  const [applicationsLoaded, setApplicationsLoaded] = useState(false);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
   const loadMemberUsers = useCallback(async () => {
     if (membersLoading) return;
     setMembersLoading(true);
@@ -811,24 +810,55 @@ function AdminPage({ authUser, state, refresh, setError, setNotice }: { authUser
       setMembersLoading(false);
     }
   }, [authUser, membersLoading, setError]);
+  const loadApplications = useCallback(async () => {
+    if (applicationsLoading) return;
+    setApplicationsLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch<{ applications: LessonApplication[] }>("/api/admin/lesson-applications/", authUser);
+      setApplications(data.applications);
+      setApplicationsLoaded(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "申込情報の読み込みに失敗しました。");
+    } finally {
+      setApplicationsLoading(false);
+    }
+  }, [applicationsLoading, authUser, setError]);
   if (!state.user?.isAdmin) return <article className={card}><h2 className="text-xl font-black text-red-700">管理者権限がありません</h2></article>;
+  function selectAdminTab(nextTab: "lesson" | "applications" | "members") {
+    setTab(nextTab);
+    setOpenedTabs((current) => current.has(nextTab) ? current : new Set(current).add(nextTab));
+    if (nextTab === "applications" && !applicationsLoaded) void loadApplications();
+    if (nextTab === "members" && !membersLoaded) void loadMemberUsers();
+  }
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["applications", "申込承認"], ["members", "会員管理"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => { setTab(id as typeof tab); if (id === "members" && !membersLoaded) void loadMemberUsers(); }}>{label}</button>)}</div>
-      {tab === "lesson" ? <AdminLessonTab authUser={authUser} state={state} refresh={refresh} setError={setError} setNotice={setNotice} /> : null}
-      {tab === "applications" ? <AdminApplications authUser={authUser} applications={state.applications} refresh={refresh} setError={setError} setNotice={setNotice} /> : null}
-      {tab === "members" ? membersLoading && !membersLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">会員情報を読み込み中です。</p></article> : <AdminMemberUsers authUser={authUser} users={memberUsers} refresh={loadMemberUsers} setError={setError} setNotice={setNotice} /> : null}
+      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["applications", "申込承認"], ["members", "会員管理"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => selectAdminTab(id as typeof tab)}>{label}</button>)}</div>
+      <div hidden={tab !== "lesson"}>
+        <AdminLessonTab authUser={authUser} setError={setError} setNotice={setNotice} />
+      </div>
+      {openedTabs.has("applications") ? (
+        <div hidden={tab !== "applications"}>
+          {applicationsLoading && !applicationsLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">申込情報を読み込み中です。</p></article> : <AdminApplications authUser={authUser} applications={applications} refresh={loadApplications} setError={setError} setNotice={setNotice} />}
+        </div>
+      ) : null}
+      {openedTabs.has("members") ? (
+        <div hidden={tab !== "members"}>
+          {membersLoading && !membersLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">会員情報を読み込み中です。</p></article> : <AdminMemberUsers authUser={authUser} users={memberUsers} refresh={loadMemberUsers} setError={setError} setNotice={setNotice} />}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { authUser: User; state: ApiState; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
+function AdminLessonTab({ authUser, setError, setNotice }: { authUser: User; setError: (m: string) => void; setNotice: (m: string) => void }) {
   const now = toTokyoParts();
   const [month, setMonth] = useState({ year: now.year, month: now.month });
   const [selectedDate, setSelectedDate] = useState("");
   const [bookingTab, setBookingTab] = useState<AdminBookingTab>("new");
   const initialBookingLoad = useRef(false);
-  const [calendarBookings, setCalendarBookings] = useState<LessonBooking[]>([]);
+  const calendarCacheRef = useRef<Record<string, { bookings: LessonBooking[]; closedDays: LessonClosedDay[] }>>({});
+  const [calendarDataByMonth, setCalendarDataByMonth] = useState<Record<string, { bookings: LessonBooking[]; closedDays: LessonClosedDay[] }>>({});
   const [bookingData, setBookingData] = useState<Record<AdminBookingTab, { bookings: LessonBooking[]; cursors: Record<string, { value: string; id: string } | null>; hasMore: boolean; loaded: boolean }>>({
     new: { bookings: [], cursors: {}, hasMore: false, loaded: false },
     future: { bookings: [], cursors: {}, hasMore: false, loaded: false },
@@ -844,14 +874,23 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
     });
   const visibleBookings = bookings;
   const hasMoreBookings = bookingData[bookingTab].hasMore;
-  const closedById = new Map(state.closedDays.map((closed) => [closed.id, closed]));
+  const calendarMonthKey = `${month.year}-${String(month.month).padStart(2, "0")}`;
+  const calendarBookings = calendarDataByMonth[calendarMonthKey]?.bookings ?? [];
+  const calendarClosedDays = calendarDataByMonth[calendarMonthKey]?.closedDays ?? [];
+  const closedById = new Map(calendarClosedDays.map((closed) => [closed.id, closed]));
   const bookingById = new Map(calendarBookings.map((booking) => [booking.id, booking]));
 
-  const loadCalendarBookings = useCallback(async (targetMonth = month) => {
+  const loadCalendarBookings = useCallback(async (targetMonth = month, force = false) => {
+    const key = `${targetMonth.year}-${String(targetMonth.month).padStart(2, "0")}`;
+    if (!force && calendarCacheRef.current[key]) return;
     try {
-      const key = `${targetMonth.year}-${String(targetMonth.month).padStart(2, "0")}`;
-      const data = await apiFetch<{ bookings: LessonBooking[] }>(`/api/admin/bookings/?mode=calendar&month=${key}`, authUser);
-      setCalendarBookings(data.bookings);
+      const [bookingData, closedDayData] = await Promise.all([
+        apiFetch<{ bookings: LessonBooking[] }>(`/api/admin/bookings/?mode=calendar&month=${key}`, authUser),
+        apiFetch<{ closedDays: LessonClosedDay[] }>(`/api/admin/closed-days/?month=${key}`, authUser),
+      ]);
+      const nextMonthData = { bookings: bookingData.bookings, closedDays: closedDayData.closedDays };
+      calendarCacheRef.current[key] = nextMonthData;
+      setCalendarDataByMonth((current) => ({ ...current, [key]: nextMonthData }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "予約カレンダーの読み込みに失敗しました。");
     }
@@ -892,11 +931,16 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
     try {
       await apiFetch(path, authUser, init);
       setNotice("更新しました。");
-      await refresh();
-      await loadCalendarBookings();
+      await Promise.all([loadCalendarBookings(month, true), loadBookingPage(bookingTab)]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "更新に失敗しました。");
     }
+  }
+
+  async function refreshLessonBookings() {
+    setError("");
+    await Promise.all([loadCalendarBookings(month, true), loadBookingPage(bookingTab)]);
+    setNotice("予約情報を更新しました。");
   }
 
   return (
@@ -908,7 +952,7 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
           <div className="grid grid-cols-7 gap-1">{cells.map((cell) => {
             const dayId = cell.date?.replaceAll("-", "") ?? "";
             const dayClosed = closedById.get(dayId);
-            const slotClosed = state.closedDays.some((closed) => closed.date === cell.date && closed.scope === "slot");
+            const slotClosed = calendarClosedDays.some((closed) => closed.date === cell.date && closed.scope === "slot");
             const hasBooking = calendarBookings.some((booking) => booking.date === cell.date);
             return <button key={cell.key} disabled={!cell.date} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-orange-300 bg-orange-50" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
           })}</div>
@@ -967,7 +1011,7 @@ function AdminLessonTab({ authUser, state, refresh, setError, setNotice }: { aut
         </article>
       </div>
       <article className={card}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-black text-slate-950">レッスン予約</h2><button className={subtleButton} onClick={refresh}>更新</button></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-black text-slate-950">レッスン予約</h2><button className={subtleButton} onClick={() => void refreshLessonBookings()}>更新</button></div>
         <div className="mb-4 flex flex-wrap gap-2">
           <button className={bookingTab === "new" ? selectedButton : subtleButton} onClick={() => setBookingTab("new")}>新着</button>
           <button className={bookingTab === "future" ? selectedButton : subtleButton} onClick={() => { setBookingTab("future"); if (!bookingData.future.loaded) void loadBookingPage("future"); }}>今後</button>
