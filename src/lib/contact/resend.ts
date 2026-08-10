@@ -50,7 +50,7 @@ function nl2br(value: string) {
   return escapeHtml(value).replaceAll("\n", "<br>");
 }
 
-function emailShell({ title, intro, children }: { title: string; intro: string; children: string }) {
+function emailShell({ title, intro, children, showAutoSendNotice = true }: { title: string; intro: string; children: string; showAutoSendNotice?: boolean }) {
   return `<!doctype html>
 <html lang="ja">
   <body style="margin:0;background:#f4f7fb;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#10243a;">
@@ -70,11 +70,13 @@ function emailShell({ title, intro, children }: { title: string; intro: string; 
                 ${children}
               </td>
             </tr>
-            <tr>
-              <td style="border-top:1px solid #e5eef6;padding:18px 28px;color:#64748b;font-size:12px;line-height:1.7;">
-                このメールはメルカトル音楽教室のWebサイトから自動送信されています。
-              </td>
-            </tr>
+            ${showAutoSendNotice ? `
+              <tr>
+                <td style="border-top:1px solid #e5eef6;padding:18px 28px;color:#64748b;font-size:12px;line-height:1.7;">
+                  このメールはメルカトル音楽教室のWebサイトから自動送信されています。
+                </td>
+              </tr>
+            ` : ""}
           </table>
         </td>
       </tr>
@@ -144,6 +146,26 @@ function trialBookingTable(input: TrialBookingEmailInput) {
     ["希望楽器", input.instrumentLabel],
     ["予約日時", `${input.dateLabel} ${input.startTime}-${input.endTime}`],
   ]);
+}
+
+function trialStoreMessage() {
+  return `
+    <div style="margin-top:6px;">
+      <div style="margin:0 0 8px;font-size:13px;font-weight:800;color:#475569;">店舗からのメッセージ</div>
+      <div style="border:1px solid #dbeafe;border-radius:12px;background:#fbfdff;padding:16px;font-size:15px;line-height:1.9;color:#10243a;">
+        新築の建物の為、車のナビでは表示されない場合がございます。<br>
+        Googleマップにて検索してお越しくださいませ。<br><br>
+        【メルカトル音楽教室 Googleマップ】<br>
+        <a href="https://maps.app.goo.gl/S8f2TBwTgtoDViG29" style="color:#0176ba;word-break:break-all;">https://maps.app.goo.gl/S8f2TBwTgtoDViG29</a><br><br>
+        ※前の生徒様がいらっしゃる場合がございますので、ご予約時間ちょうどになりましたら建物前のチャイムを鳴らして頂けると幸いです。<br><br>
+        駐車場は建物前に1台、空いていなければ右側に砂利のスペース1台がございます。<br>
+        場所が分からなければお気軽にお電話くださいませ。<br>
+        Tel : 090-1271-8695<br><br>
+        それでは当日お会いできるのを心よりお待ちしております。<br><br>
+        メルカトル音楽教室
+      </div>
+    </div>
+  `;
 }
 
 function buildAdminEmail(input: ContactEmailInput): ResendEmailPayload {
@@ -244,12 +266,28 @@ function buildTrialCustomerEmail(input: TrialBookingEmailInput): ResendEmailPayl
       `希望楽器: ${input.instrumentLabel}`,
       `予約日時: ${input.dateLabel} ${input.startTime}-${input.endTime}`,
       "",
+      "店舗からのメッセージ",
+      "新築の建物の為、車のナビでは表示されない場合がございます。",
+      "Googleマップにて検索してお越しくださいませ。",
+      "",
+      "【メルカトル音楽教室 Googleマップ】",
+      "https://maps.app.goo.gl/S8f2TBwTgtoDViG29",
+      "",
+      "※前の生徒様がいらっしゃる場合がございますので、ご予約時間ちょうどになりましたら建物前のチャイムを鳴らして頂けると幸いです。",
+      "",
+      "駐車場は建物前に1台、空いていなければ右側に砂利のスペース1台がございます。",
+      "場所が分からなければお気軽にお電話くださいませ。",
+      "Tel : 090-1271-8695",
+      "",
+      "それでは当日お会いできるのを心よりお待ちしております。",
+      "",
       "メルカトル音楽教室",
     ].join("\n"),
     html: emailShell({
       title: "無料体験レッスンのお申し込みありがとうございます",
       intro: `${input.userName} 様\n\nメルカトル音楽教室の無料体験レッスンにお申し込みいただきありがとうございます。以下の内容で予約を受け付けました。`,
-      children: trialBookingTable(input),
+      children: `${trialBookingTable(input)}${trialStoreMessage()}`,
+      showAutoSendNotice: false,
     }),
     tags: [{ name: "source", value: "trial_booking_customer" }],
   };
