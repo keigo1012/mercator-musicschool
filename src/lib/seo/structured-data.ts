@@ -4,7 +4,7 @@ const baseUrl = "https://www.mercator-musicschool.com";
 
 export const localBusinessJsonLd = {
   "@context": "https://schema.org",
-  "@type": ["LocalBusiness", "MusicSchool"],
+  "@type": ["LocalBusiness", "EducationalOrganization"],
   "@id": `${baseUrl}/#school`,
   name: site.name,
   url: `${baseUrl}/`,

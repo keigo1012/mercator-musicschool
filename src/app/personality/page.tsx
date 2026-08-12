@@ -20,6 +20,7 @@ export default function PersonalityPage() {
     <>
       <section className="px-4 pt-8 pb-16 md:pt-10 md:pb-18">
         <div className="mx-auto max-w-5xl">
+          <h1 className="sr-only">あなたに合う楽器が分かる楽器タイプ適性診断</h1>
           <Image src={images.personality.testPc} alt="" width={1024} height={576} className="hidden w-full rounded-xl border border-slate-950/18 object-cover shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:block" loading="eager" />
           <Image src={images.personality.testMb} alt="" width={1024} height={768} className="w-full rounded-xl border border-slate-950/18 object-cover shadow-[0_18px_45px_rgba(15,23,42,0.07)] md:hidden" loading="eager" />
           <div className="mt-10">
