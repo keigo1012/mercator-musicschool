@@ -26,6 +26,7 @@ type Write = {
 };
 
 let firestoreAccessToken: { token: string; expiresAt: number } | null = null;
+let identityToolkitAccessToken: { token: string; expiresAt: number } | null = null;
 
 function getProjectId() {
   return firebaseConfig.projectId;
@@ -75,6 +76,35 @@ async function getFirestoreAccessToken() {
 
   firestoreAccessToken = { token: data.access_token, expiresAt: Date.now() + Number(data.expires_in ?? 3600) * 1000 };
   return firestoreAccessToken.token;
+}
+
+async function getIdentityToolkitAccessToken() {
+  if (identityToolkitAccessToken && identityToolkitAccessToken.expiresAt > Date.now() + 60_000) return identityToolkitAccessToken.token;
+
+  const { clientEmail, privateKey } = getServiceAccount();
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = base64Url(JSON.stringify({
+    iss: clientEmail,
+    scope: "https://www.googleapis.com/auth/identitytoolkit",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  }));
+  const unsignedJwt = `${header}.${claim}`;
+  const assertion = `${unsignedJwt}.${base64Url(createSign("RSA-SHA256").update(unsignedJwt).sign(privateKey))}`;
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+  });
+  const data = await response.json().catch(() => null) as { access_token?: string; expires_in?: number; error?: string; error_description?: string } | null;
+  if (!response.ok || !data?.access_token) {
+    throw new Error(data?.error_description || data?.error || "Firebase Authentication APIの認証に失敗しました。");
+  }
+
+  identityToolkitAccessToken = { token: data.access_token, expiresAt: Date.now() + Number(data.expires_in ?? 3600) * 1000 };
+  return identityToolkitAccessToken.token;
 }
 
 async function firestoreFetch(path: string, init: RequestInit = {}) {
@@ -338,6 +368,18 @@ export const adminAuth = {
     const data = await response.json().catch(() => null) as { users?: Array<{ localId: string; email?: string; displayName?: string }>; error?: { message?: string } } | null;
     if (!response.ok || !data?.users?.[0]) throw new Error(data?.error?.message || "ログインが必要です。");
     return { uid: data.users[0].localId, email: data.users[0].email, displayName: data.users[0].displayName };
+  },
+  async deleteUser(uid: string) {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(getProjectId())}/accounts:delete`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${await getIdentityToolkitAccessToken()}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ localId: uid }),
+    });
+    const data = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    if (!response.ok) throw new Error(data?.error?.message || "Firebase Authenticationアカウントの削除に失敗しました。");
   },
 };
 

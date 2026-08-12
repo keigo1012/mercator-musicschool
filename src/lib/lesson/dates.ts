@@ -80,6 +80,16 @@ export function getJapaneseSchoolGrade(birthDate: string, now = new Date()) {
   return null;
 }
 
+export function formatBirthDateWithAgeAndGrade(birthDate?: string, now = new Date()) {
+  if (!birthDate || !isValidBirthDate(birthDate, now)) return birthDate || "未登録";
+  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
+  const current = toTokyoParts(now);
+  const hasBirthdayPassed = current.month > birthMonth || (current.month === birthMonth && current.day >= birthDay);
+  const age = current.year - birthYear - (hasBirthdayPassed ? 0 : 1);
+  const grade = getJapaneseSchoolGrade(birthDate, now);
+  return `${birthDate} (${age}歳${grade ? `・${grade}` : ""})`;
+}
+
 export function bookingIdFromDateHour(date: string, hour: number) {
   const [year, month, day] = date.split("-").map(Number);
   return `${dateKey(year, month, day)}${pad2(hour)}`;

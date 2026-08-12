@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut, type User } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase/client";
-import { buildMonthDays, bookingIdFromDateHour, formatDateJa, formatSlotJa, getJapaneseSchoolGrade, isoDate, isValidBirthDate, monthEndAfterMonths, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
+import { buildMonthDays, bookingIdFromDateHour, formatBirthDateWithAgeAndGrade, formatDateJa, formatSlotJa, isoDate, isValidBirthDate, monthEndAfterMonths, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
 import { DEFAULT_INSTRUMENT, getInstrumentLabel, INSTRUMENTS, isDefaultClosedLessonHour, LESSON_HOURS } from "@/lib/lesson/constants";
 import type { BookedLesson, LessonApplication, LessonBooking, LessonClosedDay, LessonUser } from "@/lib/lesson/types";
 import { expiryWarningTickets } from "@/lib/lesson/tickets";
@@ -59,16 +59,6 @@ function formatLessonFormat(value?: string) {
 
 function formatLessonMember(member: NonNullable<LessonUser["lessonMembers"]>[number], showGrade = false) {
   return `${member.name} (${showGrade ? formatBirthDateWithAgeAndGrade(member.birthDate) : member.birthDate})`;
-}
-
-function formatBirthDateWithAgeAndGrade(birthDate?: string) {
-  if (!birthDate || !isValidBirthDate(birthDate)) return birthDate || "未登録";
-  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
-  const current = toTokyoParts();
-  const hasBirthdayPassed = current.month > birthMonth || (current.month === birthMonth && current.day >= birthDay);
-  const age = current.year - birthYear - (hasBirthdayPassed ? 0 : 1);
-  const grade = getJapaneseSchoolGrade(birthDate);
-  return `${birthDate} (${age}歳${grade ? `・${grade}` : ""})`;
 }
 
 function lessonUserSearchText(user: LessonUser) {
@@ -1074,16 +1064,38 @@ function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { a
   const [historyCursor, setHistoryCursor] = useState<{ value: string; id: string } | null>(null);
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState("");
   const registeredUsers = users.filter((user) => user.lessonApplicationStatus === "approved" || user.hasLessonPlan);
   const unregisteredUsers = users.filter((user) => user.lessonApplicationStatus !== "approved" && !user.hasLessonPlan);
   const targets = memberTab === "registered" ? registeredUsers : unregisteredUsers;
   async function togglePause(user: LessonUser) {
+    const action = user.isBlockedByAdmin ? "休会を解除" : "休会";
+    if (!confirm(`${user.lessonFullName || user.name || "このユーザー"}さんを${action}しますか？`)) return;
     try {
       await apiFetch(`/api/admin/users/${user.id}/block/`, authUser, { method: "PATCH", body: JSON.stringify({ isBlockedByAdmin: !user.isBlockedByAdmin }) });
       setNotice("休会状態を更新しました。");
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "更新に失敗しました。");
+    }
+  }
+  async function withdrawUser(user: LessonUser) {
+    const name = user.lessonFullName || user.name || "このユーザー";
+    if (!confirm(`${name}さんを退会させますか？\n\n会員情報、会員登録の申込情報、ログインアカウントが完全に削除されます。この操作は取り消せません。カレンダーと過去・未来の予約は記録として残ります。`)) return;
+    setDeletingUserId(user.id);
+    setError("");
+    try {
+      await apiFetch(`/api/admin/users/${user.id}/`, authUser, { method: "DELETE" });
+      if (historyUserId === user.id) {
+        setHistoryUserId("");
+        setHistoryLessons([]);
+      }
+      setNotice(`${name}さんを退会処理しました。`);
+      await refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "退会処理に失敗しました。");
+    } finally {
+      setDeletingUserId("");
     }
   }
   async function loadHistory(user: LessonUser, append = false) {
@@ -1196,7 +1208,8 @@ function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { a
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className={historyUserId === user.id ? selectedButton : subtleButton} disabled={historyLoading} onClick={() => void loadHistory(user)}>{historyUserId === user.id ? "閉じる" : "履歴"}</button>
-                <button className={user.isBlockedByAdmin ? primaryButton : dangerButton} onClick={() => togglePause(user)}>{user.isBlockedByAdmin ? "解除" : "休会"}</button>
+                <button className={user.isBlockedByAdmin ? subtleButton : primaryButton} disabled={deletingUserId === user.id} onClick={() => togglePause(user)}>{user.isBlockedByAdmin ? "解除" : "休会"}</button>
+                <button className={dangerButton} disabled={deletingUserId === user.id} onClick={() => withdrawUser(user)}>{deletingUserId === user.id ? "退会処理中" : "退会"}</button>
               </div>
             </div>
             {memberTab === "registered" ? (

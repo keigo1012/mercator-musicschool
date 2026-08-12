@@ -258,7 +258,19 @@ export async function createLessonApplication(uid: string, body: Record<string, 
     });
   });
 
-  return { id: appRef.id };
+  return {
+    id: appRef.id,
+    application: {
+      fullName,
+      birthDate,
+      memberCount,
+      members: normalizedMembers,
+      postalCode,
+      address,
+      phoneNumber,
+      email,
+    },
+  };
 }
 
 export async function createLessonBooking(uid: string, body: Record<string, unknown>) {

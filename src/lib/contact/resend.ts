@@ -1,3 +1,5 @@
+import { formatBirthDateWithAgeAndGrade } from "@/lib/lesson/dates";
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 const CONTACT_TO_EMAIL = "mercator.musicschool@gmail.com";
 const CONTACT_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "contact@mercator-musicschool.com";
@@ -21,6 +23,17 @@ type TrialBookingEmailInput = {
   dateLabel: string;
   startTime: string;
   endTime: string;
+};
+
+type LessonApplicationAdminEmailInput = {
+  fullName: string;
+  birthDate: string;
+  memberCount: number;
+  members: Array<{ name: string; birthDate: string }>;
+  postalCode: string;
+  address: string;
+  phoneNumber: string;
+  email: string;
 };
 
 type ResendErrorResponse = {
@@ -50,7 +63,7 @@ function nl2br(value: string) {
   return escapeHtml(value).replaceAll("\n", "<br>");
 }
 
-function emailShell({ title, intro, children, showAutoSendNotice = true }: { title: string; intro: string; children: string; showAutoSendNotice?: boolean }) {
+function emailShell({ title, intro, children }: { title: string; intro: string; children: string }) {
   return `<!doctype html>
 <html lang="ja">
   <body style="margin:0;background:#f4f7fb;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#10243a;">
@@ -70,13 +83,6 @@ function emailShell({ title, intro, children, showAutoSendNotice = true }: { tit
                 ${children}
               </td>
             </tr>
-            ${showAutoSendNotice ? `
-              <tr>
-                <td style="border-top:1px solid #e5eef6;padding:18px 28px;color:#64748b;font-size:12px;line-height:1.7;">
-                  このメールはメルカトル音楽教室のWebサイトから自動送信されています。
-                </td>
-              </tr>
-            ` : ""}
           </table>
         </td>
       </tr>
@@ -136,15 +142,32 @@ function messageBox(message: string) {
   `;
 }
 
-function trialBookingTable(input: TrialBookingEmailInput) {
+function trialBookingTable(input: TrialBookingEmailInput, showAgeAndGrade = false) {
   return keyValueTable([
     ["氏名", input.userName],
-    ["生年月日", input.userBirthDateLabel],
+    ["生年月日", showAgeAndGrade ? formatBirthDateWithAgeAndGrade(input.userBirthDate) : input.userBirthDateLabel],
     ["メールアドレス", input.userEmail],
     ["電話番号", input.userPhoneNumber],
     ["受講形式", input.lessonFormatLabel],
     ["希望楽器", input.instrumentLabel],
     ["予約日時", `${input.dateLabel} ${input.startTime}-${input.endTime}`],
+  ]);
+}
+
+function lessonApplicationTable(input: LessonApplicationAdminEmailInput) {
+  const memberRows: Array<[string, string]> = input.memberCount >= 2
+    ? input.members.map((member, index) => [`受講者${index + 1}`, `${member.name}（${member.birthDate}）`])
+    : [];
+
+  return keyValueTable([
+    ["申込者氏名", input.fullName],
+    ["生年月日", input.birthDate],
+    ["受講人数", `${input.memberCount}名`],
+    ...memberRows,
+    ["郵便番号", input.postalCode],
+    ["住所", input.address],
+    ["電話番号", input.phoneNumber],
+    ["メールアドレス", input.email],
   ]);
 }
 
@@ -231,7 +254,7 @@ function buildTrialAdminEmail(input: TrialBookingEmailInput): ResendEmailPayload
       "無料体験レッスンのお申し込みが届きました。",
       "",
       `氏名: ${input.userName}`,
-      `生年月日: ${input.userBirthDateLabel}`,
+      `生年月日: ${formatBirthDateWithAgeAndGrade(input.userBirthDate)}`,
       `メールアドレス: ${input.userEmail}`,
       `電話番号: ${input.userPhoneNumber}`,
       `受講形式: ${input.lessonFormatLabel}`,
@@ -241,7 +264,7 @@ function buildTrialAdminEmail(input: TrialBookingEmailInput): ResendEmailPayload
     html: emailShell({
       title: "無料体験レッスンのお申し込みが届きました",
       intro: "Webサイトの無料体験レッスン予約フォームから送信がありました。返信する場合は、このメールにそのまま返信できます。",
-      children: trialBookingTable(input),
+      children: trialBookingTable(input, true),
     }),
     tags: [{ name: "source", value: "trial_booking_admin" }],
   };
@@ -287,9 +310,38 @@ function buildTrialCustomerEmail(input: TrialBookingEmailInput): ResendEmailPayl
       title: "無料体験レッスンのお申し込みありがとうございます",
       intro: `${input.userName} 様\n\nメルカトル音楽教室の無料体験レッスンにお申し込みいただきありがとうございます。以下の内容で予約を受け付けました。`,
       children: `${trialBookingTable(input)}${trialStoreMessage()}`,
-      showAutoSendNotice: false,
     }),
     tags: [{ name: "source", value: "trial_booking_customer" }],
+  };
+}
+
+function buildLessonApplicationAdminEmail(input: LessonApplicationAdminEmailInput): ResendEmailPayload {
+  const memberLines = input.memberCount >= 2
+    ? input.members.map((member, index) => `受講者${index + 1}: ${member.name}（${member.birthDate}）`)
+    : [];
+
+  return {
+    to: [CONTACT_TO_EMAIL],
+    reply_to: input.email,
+    subject: `【メルカトル音楽教室】レッスン会員登録の承認依頼：${input.fullName}`,
+    text: [
+      "レッスン会員登録の承認依頼が届きました。",
+      "",
+      `申込者氏名: ${input.fullName}`,
+      `生年月日: ${input.birthDate}`,
+      `受講人数: ${input.memberCount}名`,
+      ...memberLines,
+      `郵便番号: ${input.postalCode}`,
+      `住所: ${input.address}`,
+      `電話番号: ${input.phoneNumber}`,
+      `メールアドレス: ${input.email}`,
+    ].join("\n"),
+    html: emailShell({
+      title: "レッスン会員登録の承認依頼が届きました",
+      intro: "Webサイトの会員登録フォームから承認依頼が送信されました。管理画面で申込内容を確認してください。",
+      children: lessonApplicationTable(input),
+    }),
+    tags: [{ name: "source", value: "lesson_application_admin" }],
   };
 }
 
@@ -341,4 +393,22 @@ export async function sendTrialBookingEmail(input: TrialBookingEmailInput) {
   ]);
 
   return { adminEmail, customerEmail };
+}
+
+export async function sendTrialBookingAdminEmail(input: TrialBookingEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY が設定されていません。");
+  }
+
+  return sendResendEmail(apiKey, buildTrialAdminEmail(input));
+}
+
+export async function sendLessonApplicationAdminEmail(input: LessonApplicationAdminEmailInput) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY が設定されていません。");
+  }
+
+  return sendResendEmail(apiKey, buildLessonApplicationAdminEmail(input));
 }
