@@ -24,6 +24,10 @@ function firebaseErrorCode(caught: unknown) {
   return typeof caught === "object" && caught !== null && "code" in caught ? String(caught.code) : "";
 }
 
+function usesIosWebKit() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 
 export function LessonPortal({ mode }: { mode: Mode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -163,6 +167,10 @@ function AuthPanel({ onError, error }: { onError: (message: string) => void; err
     const auth = getFirebaseAuth();
     const provider = new GoogleAuthProvider();
     try {
+      if (usesIosWebKit()) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       await signInWithPopup(auth, provider);
     } catch (caught) {
       const code = firebaseErrorCode(caught);
