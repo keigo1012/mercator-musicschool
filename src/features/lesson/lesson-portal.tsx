@@ -944,7 +944,8 @@ function AdminLessonTab({ authUser, setError, setNotice }: { authUser: User; set
             const dayClosed = closedById.get(dayId);
             const slotClosed = calendarClosedDays.some((closed) => closed.date === cell.date && closed.scope === "slot");
             const hasBooking = calendarBookings.some((booking) => booking.date === cell.date);
-            return <button key={cell.key} disabled={!cell.date} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-orange-300 bg-orange-50" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
+            const isToday = cell.date === today;
+            return <button key={cell.key} disabled={!cell.date} aria-current={isToday ? "date" : undefined} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-[#0176BA]/30 bg-[#EAF6FD]" : isToday ? "border-red-200 bg-white" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
           })}</div>
         </article>
         <article className={card}>
