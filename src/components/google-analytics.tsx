@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
+import { publicEnv } from "@/config/env";
 
-const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const measurementId = publicEnv.googleAnalyticsMeasurementId;
 
 declare global {
   interface Window {

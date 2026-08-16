@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
-import { jsonError, requireUser } from "@/lib/firebase/api";
+import { apiErrorResponse, requireUser } from "@/lib/firebase/api";
 import { toTokyoParts, isoDate } from "@/lib/lesson/dates";
 import type { BookedLesson } from "@/lib/lesson/types";
 
@@ -36,6 +36,6 @@ export async function GET(request: Request) {
       hasMore: lessons.length === PAGE_SIZE,
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "レッスン履歴の取得に失敗しました。", 401);
+    return apiErrorResponse(error, "レッスン履歴の取得に失敗しました。", 401);
   }
 }

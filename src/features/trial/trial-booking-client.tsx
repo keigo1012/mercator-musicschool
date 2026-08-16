@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookingCalendar } from "@/features/booking/booking-calendar";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { cardClass as card, inputClass, primaryButtonClass as primaryButton, selectedButtonClass as selectedButton, subtleButtonClass as subtleButton, unavailableSlotButtonClass as unavailableSlotButton } from "@/components/ui/styles";
 import { DEFAULT_INSTRUMENT, getInstrumentLabel, INSTRUMENTS, isDefaultClosedLessonHour, LESSON_HOURS } from "@/lib/lesson/constants";
-import { buildMonthDays, bookingIdFromDateHour, formatSlotJa, isoDate, isValidBirthDate, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
+import { bookingDateStatus, findEarliestAvailableDate, isBookingDateUnavailable } from "@/lib/lesson/availability";
+import { bookingIdFromDateHour, buildBirthDate, formatSlotJa, isoDate, toTokyoParts, validateLessonDeadline } from "@/lib/lesson/dates";
 
 type ClosedDay = {
   id: string;
@@ -16,12 +19,6 @@ type Availability = {
   closedDays: ClosedDay[];
 };
 
-const card = "rounded-xl border border-slate-950/18 bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfd_100%)] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)]";
-const primaryButton = "inline-flex min-h-11 items-center justify-center rounded-full bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
-const subtleButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-slate-950/18 bg-white px-5 py-2 text-sm font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400";
-const selectedButton = "inline-flex min-h-11 items-center justify-center rounded-full border border-[#0176BA] bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
-const unavailableSlotButton = "inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-950/10 bg-slate-100 px-5 py-2 text-sm font-bold text-slate-400 disabled:cursor-not-allowed";
-const inputClass = "min-h-11 w-full rounded-lg border border-slate-950/18 bg-white px-3 py-2 text-sm outline-none focus:border-[#0176BA] focus:ring-2 focus:ring-[#0176BA]/15";
 const birthDateGrid = "mt-2 grid max-w-[15.5rem] grid-cols-[minmax(0,5.5rem)_minmax(0,4rem)_minmax(0,4rem)] gap-2";
 
 function initialMonth() {
@@ -33,40 +30,6 @@ function initialSelectedDate() {
   const now = toTokyoParts();
   const tomorrow = new Date(Date.UTC(now.year, now.month - 1, now.day + 1));
   return isoDate(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate());
-}
-
-function buildBirthDate(year: string, month: string, day: string) {
-  const y = Number(year);
-  const m = Number(month);
-  const d = Number(day);
-  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) {
-    return "";
-  }
-  const value = new Date(Date.UTC(y, m - 1, d));
-  if (value.getUTCFullYear() !== y || value.getUTCMonth() + 1 !== m || value.getUTCDate() !== d) {
-    return "";
-  }
-
-  const date = isoDate(y, m, d);
-  return isValidBirthDate(date) ? date : "";
-}
-
-function findEarliestAvailableDate(bookedSlotIds: Set<string>, closedById: Map<string, ClosedDay>) {
-  const now = toTokyoParts();
-  const max = new Date(Date.UTC(now.year, now.month - 1, now.day));
-  max.setUTCMonth(max.getUTCMonth() + 2);
-
-  for (let value = new Date(Date.UTC(now.year, now.month - 1, now.day + 1)); value <= max; value.setUTCDate(value.getUTCDate() + 1)) {
-    const date = isoDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
-    if (validateLessonDeadline(date) || closedById.has(date.replaceAll("-", ""))) continue;
-    const hasAvailableHour = LESSON_HOURS.some((hour) => {
-      const slotId = bookingIdFromDateHour(date, hour);
-      return !isDefaultClosedLessonHour(hour) && !bookedSlotIds.has(slotId) && !closedById.has(slotId);
-    });
-    if (hasAvailableHour) return date;
-  }
-
-  return "";
 }
 
 export function TrialBookingClient() {
@@ -85,37 +48,10 @@ export function TrialBookingClient() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileIdempotencyKey, setTurnstileIdempotencyKey] = useState("");
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
-  const cells = useMemo(() => buildMonthDays(month.year, month.month), [month]);
   const bookedSlotIds = useMemo(() => new Set(availability.bookedSlotIds), [availability.bookedSlotIds]);
   const closedById = useMemo(() => new Map(availability.closedDays.map((closed) => [closed.id, closed])), [availability.closedDays]);
-
-  const isDateUnavailable = useCallback((date: string) => {
-    if (validateLessonDeadline(date)) {
-      return true;
-    }
-    if (closedById.has(date.replaceAll("-", ""))) {
-      return true;
-    }
-    return LESSON_HOURS.every((hour) => {
-      const slotId = bookingIdFromDateHour(date, hour);
-      return isDefaultClosedLessonHour(hour) || bookedSlotIds.has(slotId) || closedById.has(slotId);
-    });
-  }, [bookedSlotIds, closedById]);
-
-  const getDateStatus = useCallback((date: string) => {
-    if (validateLessonDeadline(date) || closedById.has(date.replaceAll("-", ""))) {
-      return "×";
-    }
-    const selectableHours = LESSON_HOURS.filter((hour) => !isDefaultClosedLessonHour(hour));
-    const availableCount = selectableHours.filter((hour) => {
-      const slotId = bookingIdFromDateHour(date, hour);
-      return !bookedSlotIds.has(slotId) && !closedById.has(slotId);
-    }).length;
-
-    if (availableCount === 0) return "×";
-    if (availableCount === selectableHours.length) return "○";
-    return "△";
-  }, [bookedSlotIds, closedById]);
+  const isDateUnavailable = useCallback((date: string) => isBookingDateUnavailable(date, bookedSlotIds, closedById), [bookedSlotIds, closedById]);
+  const getDateStatus = useCallback((date: string) => bookingDateStatus(date, bookedSlotIds, closedById), [bookedSlotIds, closedById]);
 
   async function refreshAvailability() {
     setLoading(true);
@@ -269,36 +205,7 @@ export function TrialBookingClient() {
       <section className="bg-white px-4 py-14 md:py-16">
         <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-5">
-          <article className={card}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <button className={subtleButton} onClick={() => moveMonth(-1)}>前月</button>
-              <h2 className="ui-subheading font-black text-slate-950">{month.year}年{month.month}月</h2>
-              <button className={subtleButton} onClick={() => moveMonth(1)}>翌月</button>
-            </div>
-            <div className="grid grid-cols-7 text-center text-xs font-black text-slate-500">{["日", "月", "火", "水", "木", "金", "土"].map((day) => <div key={day} className="py-2">{day}</div>)}</div>
-            <div className="grid grid-cols-7 gap-1">
-              {cells.map((cell) => {
-                const disabled = !cell.date;
-                const unavailable = cell.date ? isDateUnavailable(cell.date) : false;
-                const status = cell.date ? getDateStatus(cell.date) : "";
-                return (
-                  <button
-                    key={cell.key}
-                    disabled={disabled}
-                    onClick={() => {
-                      if (!cell.date) return;
-                      setSelectedDate(cell.date);
-                      setSelectedHour(null);
-                    }}
-                    className={`min-h-14 rounded-lg border p-1 text-sm font-bold ${cell.date === selectedDate ? "border-[#0176BA] bg-[#EAF6FD]" : unavailable ? "border-slate-950/10 bg-slate-100 text-slate-400" : "border-slate-950/10 bg-white"} disabled:bg-slate-100 disabled:text-slate-300`}
-                  >
-                    {cell.day}<span className="mt-1 block text-xs leading-none">{status}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {loading ? <p className="mt-4 text-sm font-bold text-slate-500">予約枠を読み込み中です。</p> : null}
-          </article>
+          <article className={card}><BookingCalendar month={month} selectedDate={selectedDate} onMoveMonth={moveMonth} onSelectDate={(date) => { setSelectedDate(date); setSelectedHour(null); }} isDateUnavailable={isDateUnavailable} getDateStatus={getDateStatus} buttonClassName={subtleButton} headingClassName="ui-subheading" loading={loading} /></article>
 
           {selectedDate ? (
             <article className={card}>

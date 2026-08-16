@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
-import { jsonError, requireAdmin } from "@/lib/firebase/api";
+import { apiErrorResponse, requireAdmin } from "@/lib/firebase/api";
 
 const PAGE_SIZE = 8;
 const COLLECTIONS = ["lessonBookings", "trialBookings"] as const;
@@ -62,6 +62,6 @@ export async function GET(request: Request) {
     const hasMore = pages.some((page) => page.docs.length === PAGE_SIZE) || pages.some((page) => page.docs.some((booking) => !bookings.includes(booking)));
     return NextResponse.json({ bookings, cursors, hasMore });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "予約一覧取得に失敗しました。", 403);
+    return apiErrorResponse(error, "予約一覧取得に失敗しました。", 403);
   }
 }

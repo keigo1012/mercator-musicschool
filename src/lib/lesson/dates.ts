@@ -64,6 +64,17 @@ export function isValidBirthDate(date: string, now = new Date()) {
   return Number(dateKey(year, month, day)) <= Number(dateKey(current.year, current.month, current.day));
 }
 
+export function buildBirthDate(year: string, month: string, day: string) {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d) || y < 1900 || m < 1 || m > 12 || d < 1 || d > 31) return "";
+  const value = new Date(Date.UTC(y, m - 1, d));
+  if (value.getUTCFullYear() !== y || value.getUTCMonth() + 1 !== m || value.getUTCDate() !== d) return "";
+  const date = isoDate(y, m, d);
+  return isValidBirthDate(date) ? date : "";
+}
+
 export function getJapaneseSchoolGrade(birthDate: string, now = new Date()) {
   if (!isValidBirthDate(birthDate, now)) return null;
 

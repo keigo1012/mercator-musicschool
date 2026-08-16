@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
-import { jsonError, reconcileLessonUser, requireAdmin } from "@/lib/firebase/api";
+import { apiErrorResponse, reconcileLessonUser, requireAdmin } from "@/lib/firebase/api";
 import type { LessonUser } from "@/lib/lesson/types";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +24,6 @@ export async function GET(request: Request) {
       });
     return NextResponse.json({ users: filteredUsers });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "ユーザー取得に失敗しました。", 403);
+    return apiErrorResponse(error, "ユーザー取得に失敗しました。", 403);
   }
 }

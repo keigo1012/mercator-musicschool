@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
-import { jsonError, requireAdmin } from "@/lib/firebase/api";
+import { apiErrorResponse, requireAdmin } from "@/lib/firebase/api";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,6 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({ closedDays: snap.docs.map((doc) => serializeFirestore({ id: doc.id, ...doc.data() })) });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "休業日取得に失敗しました。", 403);
+    return apiErrorResponse(error, "休業日取得に失敗しました。", 403);
   }
 }

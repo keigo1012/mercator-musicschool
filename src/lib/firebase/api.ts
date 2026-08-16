@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ApiError, apiErrorResponse } from "@/lib/api/errors";
 import { adminAuth, adminDb, FieldValue, serializeFirestore, serverTimestamp, type DocumentReference } from "./admin";
 import { DEFAULT_INSTRUMENT } from "@/lib/lesson/constants";
 import type { LessonUser } from "@/lib/lesson/types";
@@ -15,7 +16,7 @@ async function getAuthUserFromRequest(request: Request) {
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) {
-    throw new Error("ログインが必要です。");
+    throw new ApiError("ログインが必要です。", 401);
   }
 
   return adminAuth.verifyIdToken(token);
@@ -59,7 +60,7 @@ export async function requireUser(request: Request) {
 export async function requireAdmin(request: Request) {
   const user = await requireUser(request);
   if (!user.isAdmin) {
-    throw new Error("管理者権限がありません。");
+    throw new ApiError("管理者権限がありません。", 403);
   }
   return user;
 }
@@ -108,8 +109,4 @@ export async function reconcileLessonUser(ref: DocumentReference, user: LessonUs
   };
 }
 
-export function updateArrayWithoutBooking(bookedLessons: unknown, bookingId: string) {
-  return Array.isArray(bookedLessons) ? bookedLessons.filter((item) => typeof item === "object" && item && (item as { id?: string }).id !== bookingId) : [];
-}
-
-export { FieldValue };
+export { apiErrorResponse, FieldValue };

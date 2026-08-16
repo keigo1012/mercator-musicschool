@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { TurnstileWidget } from "@/components/turnstile-widget";
+import { inputClass as sharedInputClass, primaryButtonClass } from "@/components/ui/styles";
 
-const inputClass = "mt-2 min-h-11 w-full rounded-lg border border-slate-950/18 bg-white px-3 py-2 text-sm outline-none focus:border-[#0176BA] focus:ring-2 focus:ring-[#0176BA]/15";
-const primaryButton = "inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#0176BA] px-5 py-2 text-sm font-bold text-white transition hover:bg-[#015F96] disabled:cursor-not-allowed disabled:bg-slate-300";
+const inputClass = `${sharedInputClass} mt-2`;
+const primaryButton = `${primaryButtonClass} w-full`;
 
 export function ContactFormClient() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });

@@ -1,0 +1,56 @@
+.fixed-cta {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+}
+
+.fixed-cta-contact {
+  background: #64748b;
+}
+
+.fixed-cta-contact:hover {
+  background: #475569;
+}
+
+.fixed-cta-trial {
+  background: #e53935;
+  box-shadow: 0 8px 18px rgba(229, 57, 53, 0.28);
+}
+
+.fixed-cta-trial:hover {
+  background: #c62828;
+}
+
+.fixed-cta-pill {
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.25rem 0.55rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.fixed-cta-contact .fixed-cta-pill {
+  color: #64748b;
+}
+
+.fixed-cta-trial .fixed-cta-pill {
+  color: #e53935;
+}
+
+@media (min-width: 640px) {
+  .fixed-cta {
+    font-size: 1rem;
+  }
+}
+

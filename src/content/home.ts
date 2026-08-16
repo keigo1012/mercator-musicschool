@@ -27,13 +27,6 @@ export const courses = [
   },
 ];
 
-export const worries = [
-  { title: "30代男性のケース", image: "/images/Home/20s-Male.png", alt: "20代男性", body: ["独学で初めてみたが", "いつまで経っても上達しない...。"] },
-  { title: "60代男性のケース", image: "/images/Home/60s-Male.png", alt: "60代男性", body: ["学生時代に挫折して以来", "楽器はインテリアになっている。"] },
-  { title: "20代女性のケース", image: "/images/Home/20s-Female.png", alt: "20代女性", body: ["結婚式に楽器演奏を披露したいが", "当日まであと1ヶ月しか時間がない...。"] },
-  { title: "10代女性のケース", image: "/images/Home/Teens-Female.png", alt: "10代女性", body: ["他の音楽教室で習っていたけど", "やりたい曲をやらせてくれなかった。"] },
-];
-
 export const systems = [
   {
     title: "24時間好きな時にレッスン予約が可能",

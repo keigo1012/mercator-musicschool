@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { jsonError, requireUser } from "@/lib/firebase/api";
+import { apiErrorResponse, requireUser } from "@/lib/firebase/api";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "ユーザー取得に失敗しました。", 401);
+    return apiErrorResponse(error, "ユーザー取得に失敗しました。", 401);
   }
 }

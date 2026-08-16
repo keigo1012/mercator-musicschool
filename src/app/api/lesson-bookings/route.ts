@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb, serializeFirestore } from "@/lib/firebase/admin";
-import { jsonError, requireUser } from "@/lib/firebase/api";
+import { apiErrorResponse, requireUser } from "@/lib/firebase/api";
 import { createLessonBooking } from "@/lib/lesson/server";
 import { lessonBookingDateRange } from "@/lib/lesson/dates";
 
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     const bookings = [...lessonBookings, ...trialBookings];
     return NextResponse.json({ bookings });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "予約取得に失敗しました。", 401);
+    return apiErrorResponse(error, "予約取得に失敗しました。", 401);
   }
 }
 
@@ -52,6 +52,6 @@ export async function POST(request: Request) {
     const result = await createLessonBooking(user.id, body);
     return NextResponse.json(result);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "予約に失敗しました。");
+    return apiErrorResponse(error, "予約に失敗しました。");
   }
 }

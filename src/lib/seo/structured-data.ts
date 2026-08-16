@@ -10,7 +10,7 @@ export const localBusinessJsonLd = {
   url: `${baseUrl}/`,
   telephone: `+81-${site.phone.slice(1, 3)}-${site.phone.slice(3, 7)}-${site.phone.slice(7)}`,
   email: site.email,
-  image: `${baseUrl}/images/Home/Top.jpg`,
+  image: `${baseUrl}/images/Home/TopImage.jpg`,
   description: "茨城県土浦市永国の音楽教室。ドラム、ポップスピアノ、ギター、ベース、フィンガードラム、DTMを初心者から個人レッスンで学べます。",
   address: {
     "@type": "PostalAddress",
