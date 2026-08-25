@@ -22,7 +22,8 @@ export function formatTicketSource(source: string) {
 }
 
 
-export function formatBookingInstrument(booking: Pick<LessonBooking, "bookingType" | "instrument">) {
+export function formatBookingInstrument(booking: Pick<LessonBooking, "bookingType" | "instrument" | "lessonKind" | "lessonTitle">) {
+  if (booking.lessonKind === "adminAssigned") return booking.lessonTitle || "管理者付与レッスン";
   const label = getInstrumentLabel(booking.instrument);
   return booking.bookingType === "trial" ? `体験レッスン：${label}` : label;
 }

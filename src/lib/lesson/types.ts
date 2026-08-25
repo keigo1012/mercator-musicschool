@@ -4,6 +4,11 @@ export type LessonApplicationReviewStatus = "pending" | "approved" | "rejected";
 export type BookedLesson = {
   id: string;
   userId: string;
+  lessonKind?: "standard" | "adminAssigned";
+  lessonTitle?: string;
+  assignmentGroupId?: string;
+  assignedBy?: string;
+  adminOnlyCancellation?: boolean;
   memberName?: string;
   instrument: string;
   lessonFormat?: "inPerson" | "online";

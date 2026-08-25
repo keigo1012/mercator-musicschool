@@ -19,6 +19,7 @@ export function AdminPage({ authUser, state, setError, setNotice }: { authUser: 
   const [applications, setApplications] = useState<LessonApplication[]>([]);
   const [applicationsLoaded, setApplicationsLoaded] = useState(false);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [lessonRefreshKey, setLessonRefreshKey] = useState(0);
   const loadMemberUsers = useCallback(async () => {
     if (membersLoading) return;
     setMembersLoading(true);
@@ -56,9 +57,9 @@ export function AdminPage({ authUser, state, setError, setNotice }: { authUser: 
   }
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["applications", "申込承認"], ["members", "会員管理"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => selectAdminTab(id as typeof tab)}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{[["lesson", "レッスン"], ["members", "会員管理"], ["applications", "申込承認"]].map(([id, label]) => <button key={id} className={`${subtleButton} ${tab === id ? "border-[#0176BA] bg-[#EAF6FD] text-[#015F96]" : ""}`} onClick={() => selectAdminTab(id as typeof tab)}>{label}</button>)}</div>
       <div hidden={tab !== "lesson"}>
-        <AdminLessonTab authUser={authUser} setError={setError} setNotice={setNotice} />
+        <AdminLessonTab key={lessonRefreshKey} authUser={authUser} setError={setError} setNotice={setNotice} />
       </div>
       {openedTabs.has("applications") ? (
         <div hidden={tab !== "applications"}>
@@ -67,7 +68,7 @@ export function AdminPage({ authUser, state, setError, setNotice }: { authUser: 
       ) : null}
       {openedTabs.has("members") ? (
         <div hidden={tab !== "members"}>
-          {membersLoading && !membersLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">会員情報を読み込み中です。</p></article> : <AdminMemberUsers authUser={authUser} users={memberUsers} refresh={loadMemberUsers} setError={setError} setNotice={setNotice} />}
+          {membersLoading && !membersLoaded ? <article className={card}><p className="text-sm font-bold text-slate-500">会員情報を読み込み中です。</p></article> : <AdminMemberUsers authUser={authUser} users={memberUsers} refresh={loadMemberUsers} onBookingsChanged={() => setLessonRefreshKey((current) => current + 1)} setError={setError} setNotice={setNotice} />}
         </div>
       ) : null}
     </div>

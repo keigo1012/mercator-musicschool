@@ -7,8 +7,9 @@ import { getInstrumentLabel } from "@/lib/lesson/constants";
 import type { BookedLesson, LessonUser } from "@/lib/lesson/types";
 import { apiFetch, card, dangerButton, formatLessonFormat, Info, inputClass, primaryButton, selectedButton, subtleButton } from "./lesson-shared";
 import { defaultTicketExpiry, formatLessonMember, formatTicketSource, lessonUserMemberTotal, lessonUserSearchText, lessonUserSortName, todayIso } from "./admin-shared";
+import { AdminAssignedLessonPanel } from "./admin-assigned-lesson-client";
 
-export function AdminMemberUsers({ authUser, users, refresh, setError, setNotice }: { authUser: User; users: LessonUser[]; refresh: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
+export function AdminMemberUsers({ authUser, users, refresh, onBookingsChanged, setError, setNotice }: { authUser: User; users: LessonUser[]; refresh: () => void; onBookingsChanged: () => void; setError: (m: string) => void; setNotice: (m: string) => void }) {
   const [query, setQuery] = useState("");
   const [memberTab, setMemberTab] = useState<"registered" | "unregistered">("registered");
   const [values, setValues] = useState<Record<string, { monthlyLessonGrantCount: number; issueCount: number; expiresOn: string }>>({});
@@ -18,6 +19,7 @@ export function AdminMemberUsers({ authUser, users, refresh, setError, setNotice
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deletingUserId, setDeletingUserId] = useState("");
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
   const registeredUsers = users.filter((user) => user.lessonApplicationStatus === "approved" || user.hasLessonPlan);
   const unregisteredUsers = users.filter((user) => user.lessonApplicationStatus !== "approved" && !user.hasLessonPlan);
   const targets = memberTab === "registered" ? registeredUsers : unregisteredUsers;
@@ -112,6 +114,22 @@ export function AdminMemberUsers({ authUser, users, refresh, setError, setNotice
       setError(caught instanceof Error ? caught.message : "回数券削除に失敗しました。");
     }
   }
+  async function cancelLesson(lesson: BookedLesson) {
+    const lessonLabel = lesson.lessonKind === "adminAssigned"
+      ? `「${lesson.lessonTitle || "管理者付与レッスン"}」`
+      : `${formatDateJa(lesson.date)} ${lesson.startAt.slice(11, 16)}からのレッスン`;
+    if (!confirm(`${lessonLabel}の予約を取り消しますか？\n対象者のレッスン回数を1回戻します。`)) return;
+    setError("");
+    try {
+      await apiFetch(`/api/admin/bookings/${lesson.id}/`, authUser, { method: "DELETE" });
+      setHistoryLessons((current) => current.filter((item) => item.id !== lesson.id));
+      setNotice("予約を取り消しました。");
+      await refresh();
+      onBookingsChanged();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "取消に失敗しました。");
+    }
+  }
   const filtered = targets
     .filter((user) => lessonUserSearchText(user).includes(query.toLowerCase()))
     .sort((a, b) => lessonUserSortName(a).localeCompare(lessonUserSortName(b), "ja"));
@@ -122,12 +140,24 @@ export function AdminMemberUsers({ authUser, users, refresh, setError, setNotice
     if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
     return aUpcoming ? a.startAt.localeCompare(b.startAt) : b.startAt.localeCompare(a.startAt);
   });
+  async function refreshAfterAssignment() {
+    await refresh();
+    onBookingsChanged();
+  }
   return (
     <article className={card}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-black">会員管理</h2>
-        <button className={subtleButton} onClick={refresh}>更新</button>
+        <div className="flex flex-wrap gap-2"><button className={primaryButton} onClick={() => setAssignmentOpen(true)}>管理者付与レッスン作成</button><button className={subtleButton} onClick={refresh}>更新</button></div>
       </div>
+      {assignmentOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="presentation" onMouseDown={() => setAssignmentOpen(false)}>
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl" role="dialog" aria-modal="true" aria-label="管理者付与レッスン作成" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="sticky top-0 z-10 flex justify-end border-b border-slate-950/10 bg-white px-5 py-3"><button className={subtleButton} onClick={() => setAssignmentOpen(false)}>閉じる</button></div>
+            <AdminAssignedLessonPanel authUser={authUser} users={users} refresh={refreshAfterAssignment} setError={setError} setNotice={setNotice} />
+          </div>
+        </div>
+      ) : null}
       <div className="mb-4 flex flex-wrap gap-2">
         <button className={memberTab === "registered" ? selectedButton : subtleButton} onClick={() => setMemberTab("registered")}>登録済み</button>
         <button className={memberTab === "unregistered" ? selectedButton : subtleButton} onClick={() => setMemberTab("unregistered")}>未登録</button>
@@ -202,12 +232,15 @@ export function AdminMemberUsers({ authUser, users, refresh, setError, setNotice
               <div className="mt-4 space-y-3 border-t border-slate-950/10 pt-4">
                 <h3 className="font-black text-slate-950">レッスン履歴</h3>
                 {displayedHistoryLessons.length ? displayedHistoryLessons.map((lesson) => (
-                  <div key={lesson.id} className="rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lesson.date >= historyToday ? "bg-[#EAF6FD] text-[#015F96]" : "bg-slate-100 text-slate-600"}`}>{lesson.date >= historyToday ? "予約済み" : "実施済み"}</span>
+                  <div key={lesson.id} className="flex items-center justify-between gap-3 rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lesson.date >= historyToday ? "bg-[#EAF6FD] text-[#015F96]" : "bg-slate-100 text-slate-600"}`}>{lesson.date >= historyToday ? "予約済み" : "実施済み"}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">{lesson.lessonKind === "adminAssigned" ? <><span className="font-bold text-[#015F96]">{lesson.lessonTitle || "管理者付与レッスン"}</span>{lesson.memberName ? ` / ${lesson.memberName}` : ""}</> : <>{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</>}</div>
                     </div>
-                    <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
+                    {lesson.date >= historyToday ? <button className={`${dangerButton} shrink-0 min-h-9 px-3 py-1 text-xs`} onClick={() => void cancelLesson(lesson)}>予約取消</button> : null}
                   </div>
                 )) : historyLoading ? null : <p className="text-sm text-slate-500">レッスン履歴はありません。</p>}
                 {historyLoading ? <p className="text-sm font-bold text-slate-500">読み込み中です。</p> : null}

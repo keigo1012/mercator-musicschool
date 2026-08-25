@@ -152,8 +152,12 @@ export function BookedLessonsCard({ authUser, onCancel }: { authUser: User; onCa
         {lessons.length ? lessons.map((lesson) => (
           <div key={lesson.id} className="rounded-lg bg-[#f7fbfa] p-3">
             <div className="font-bold text-slate-950">{formatDateJa(lesson.date)} {lesson.startAt.slice(11, 16)}-{lesson.endAt.slice(11, 16)}</div>
-            <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
-            {onCancel && !validateLessonDeadline(lesson.date, now) ? <button className={`${dangerButton} mt-3`} onClick={() => onCancel(lesson)}>キャンセル</button> : null}
+            {lesson.lessonKind === "adminAssigned" ? (
+              <div className="mt-1 text-sm text-slate-600"><span className="font-bold text-[#015F96]">{lesson.lessonTitle || "管理者付与レッスン"}</span>{lesson.memberName ? ` / ${lesson.memberName}` : ""}<span className="block text-xs text-slate-500">管理者による付与</span></div>
+            ) : (
+              <div className="mt-1 text-sm text-slate-600">{lesson.memberName ? `${lesson.memberName} / ` : ""}{lesson.lessonFormat ? `${formatLessonFormat(lesson.lessonFormat)} / ` : ""}{getInstrumentLabel(lesson.instrument)}</div>
+            )}
+            {onCancel && lesson.lessonKind !== "adminAssigned" && !lesson.adminOnlyCancellation && !validateLessonDeadline(lesson.date, now) ? <button className={`${dangerButton} mt-3`} onClick={() => onCancel(lesson)}>キャンセル</button> : null}
           </div>
         )) : pages[selectedTab].loaded && loadingTab !== selectedTab ? <p className="text-sm text-slate-500">{selectedTab === "upcoming" ? "今後の予約はありません" : "過去のレッスンはありません"}</p> : null}
         {loadingTab === selectedTab ? <p className="text-sm font-bold text-slate-500">読み込み中です。</p> : null}

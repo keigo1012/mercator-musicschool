@@ -32,6 +32,9 @@ export async function cancelLessonBooking(bookingId: string, requesterUid: strin
   if (!options.admin && booking.userId !== requesterUid) {
     throw new Error("自分の予約のみキャンセルできます。");
   }
+  if (!options.admin && (booking.adminOnlyCancellation || booking.lessonKind === "adminAssigned")) {
+    throw new Error("このレッスンは管理者のみ取り消せます。");
+  }
   const deadlineError = validateLessonDeadline(booking.date);
   if (!options.admin && deadlineError) {
     throw new Error(deadlineError);

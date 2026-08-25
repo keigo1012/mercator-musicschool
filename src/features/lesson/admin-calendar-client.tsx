@@ -38,6 +38,9 @@ export function AdminLessonTab({ authUser, setError, setNotice }: { authUser: Us
   const calendarClosedDays = calendarDataByMonth[calendarMonthKey]?.closedDays ?? [];
   const closedById = new Map(calendarClosedDays.map((closed) => [closed.id, closed]));
   const bookingById = new Map(calendarBookings.map((booking) => [booking.id, booking]));
+  const selectedAssignedBookings = selectedDate
+    ? calendarBookings.filter((booking) => booking.date === selectedDate && booking.lessonKind === "adminAssigned")
+    : [];
 
   const loadCalendarBookings = useCallback(async (targetMonth = month, force = false) => {
     const key = `${targetMonth.year}-${String(targetMonth.month).padStart(2, "0")}`;
@@ -114,7 +117,7 @@ export function AdminLessonTab({ authUser, setError, setNotice }: { authUser: Us
             const slotClosed = calendarClosedDays.some((closed) => closed.date === cell.date && closed.scope === "slot");
             const hasBooking = calendarBookings.some((booking) => booking.date === cell.date);
             const isToday = cell.date === today;
-            return <button key={cell.key} disabled={!cell.date} aria-current={isToday ? "date" : undefined} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-[#0176BA]/30 bg-[#EAF6FD]" : isToday ? "border-red-200 bg-white" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
+            return <button key={cell.key} disabled={!cell.date} aria-current={isToday ? "date" : undefined} onClick={() => cell.date && setSelectedDate(cell.date)} className={`min-h-16 rounded-lg border p-1 text-sm font-bold ${selectedDate === cell.date ? "border-[#0176BA]/30 bg-[#EAF6FD]" : isToday ? "border-[#f5c26b] bg-[#fff4e6]" : "border-slate-950/10 bg-white"} disabled:bg-slate-100`}><span>{cell.day}</span><span className="mt-1 block text-xs leading-none">{cell.date ? hasBooking ? "●" : dayClosed ? "×" : slotClosed ? "△" : "○" : ""}</span></button>;
           })}</div>
         </article>
         <article className={card}>
@@ -166,6 +169,22 @@ export function AdminLessonTab({ authUser, setError, setNotice }: { authUser: Us
                   </div>
                 );
               })}</div>
+              {selectedAssignedBookings.length ? (
+                <div className="mt-5 border-t border-slate-950/10 pt-4">
+                  <h3 className="font-black text-slate-950">管理者付与レッスン</h3>
+                  <div className="mt-3 space-y-2">
+                    {selectedAssignedBookings.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between gap-3 rounded-lg border border-[#0176BA]/20 bg-[#EAF6FD] p-3">
+                        <div className="min-w-0 text-sm">
+                          <div className="font-black text-[#015F96]">{booking.lessonTitle || "管理者付与レッスン"}</div>
+                          <div className="mt-1 text-slate-600">{booking.startAt.slice(11, 16)}-{booking.endAt.slice(11, 16)} / {booking.userName}</div>
+                        </div>
+                        <button className={`${dangerButton} shrink-0 min-h-10 px-4 py-1.5 text-xs`} onClick={() => confirm("この予約を取り消しますか？ユーザーの残り回数は1回戻ります。") && call(`/api/admin/bookings/${booking.id}/`, { method: "DELETE" })}>予約取消</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : <><h2 className="text-xl font-black text-slate-950">日付を選択</h2><p className="mt-3 text-slate-600">カレンダーの日付をタップしてください。</p></>}
         </article>
@@ -177,7 +196,7 @@ export function AdminLessonTab({ authUser, setError, setNotice }: { authUser: Us
           <button className={bookingTab === "future" ? selectedButton : subtleButton} onClick={() => { setBookingTab("future"); if (!bookingData.future.loaded) void loadBookingPage("future"); }}>今後</button>
           <button className={bookingTab === "past" ? selectedButton : subtleButton} onClick={() => { setBookingTab("past"); if (!bookingData.past.loaded) void loadBookingPage("past"); }}>過去</button>
         </div>
-        <div className="mt-4 space-y-3">{visibleBookings.length ? visibleBookings.map((booking) => <div key={booking.id} className="rounded-lg bg-[#f7fbfa] p-3"><div className="font-black">{booking.bookingType === "trial" ? "体験レッスン" : "通常レッスン"} / {booking.userName}</div><div className="text-sm text-slate-600">{formatDateJa(booking.date)} {booking.startAt.slice(11, 16)}-{booking.endAt.slice(11, 16)} / {formatBookingInstrument(booking)}{booking.lessonFormat ? ` / ${formatLessonFormat(booking.lessonFormat)}` : ""} / {booking.userPhoneNumber}{booking.bookingType === "trial" && booking.userBirthDate ? ` / 生年月日: ${formatBirthDateWithAgeAndGrade(booking.userBirthDate)}` : ""}</div></div>) : <p className="text-sm text-slate-500">予約情報はありません。</p>}</div>
+        <div className="mt-4 space-y-3">{visibleBookings.length ? visibleBookings.map((booking) => <div key={booking.id} className="rounded-lg bg-[#f7fbfa] p-3"><div className="font-black">{booking.bookingType === "trial" ? "体験レッスン" : booking.lessonKind === "adminAssigned" ? "管理者付与" : "通常レッスン"} / {booking.userName}</div><div className="text-sm text-slate-600">{formatDateJa(booking.date)} {booking.startAt.slice(11, 16)}-{booking.endAt.slice(11, 16)} / {formatBookingInstrument(booking)}{booking.lessonKind !== "adminAssigned" && booking.lessonFormat ? ` / ${formatLessonFormat(booking.lessonFormat)}` : ""} / {booking.userPhoneNumber}{booking.bookingType === "trial" && booking.userBirthDate ? ` / 生年月日: ${formatBirthDateWithAgeAndGrade(booking.userBirthDate)}` : ""}</div></div>) : <p className="text-sm text-slate-500">予約情報はありません。</p>}</div>
         {hasMoreBookings ? <button className={`${subtleButton} mt-4 w-full`} onClick={() => void loadBookingPage(bookingTab, true)}>さらに表示</button> : null}
       </article>
     </div>

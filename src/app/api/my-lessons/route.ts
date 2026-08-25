@@ -27,7 +27,12 @@ export async function GET(request: Request) {
       limit: PAGE_SIZE,
       cursor: cursorValue && cursorId ? { value: cursorValue, id: cursorId } : undefined,
     });
-    const lessons = snap.docs.map((doc) => serializeFirestore({ id: doc.id, ...doc.data() }) as BookedLesson);
+    const lessons = snap.docs.map((doc) => {
+      const lesson = serializeFirestore({ id: doc.id, ...doc.data() }) as BookedLesson;
+      const memberVisibleLesson = { ...lesson };
+      delete memberVisibleLesson.assignedBy;
+      return memberVisibleLesson;
+    });
     const last = lessons.at(-1);
 
     return NextResponse.json({
