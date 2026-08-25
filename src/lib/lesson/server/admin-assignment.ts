@@ -1,4 +1,4 @@
-import { adminDb, FieldValue, serverTimestamp } from "@/lib/firebase/admin";
+import { adminDb, serverTimestamp } from "@/lib/firebase/admin";
 import { DEFAULT_INSTRUMENT, INSTRUMENTS } from "@/lib/lesson/constants";
 import { parseBookingRequest } from "@/lib/lesson/dates";
 import type { BookedLesson, LessonUser } from "@/lib/lesson/types";
@@ -115,8 +115,6 @@ export async function createAdminAssignedLessons(adminId: string, body: Record<s
         transaction.update(userRef, {
           remainingLessons: countRemainingLessons(consumed.next),
           lessonTickets: consumed.next,
-          bookedLessons: FieldValue.arrayUnion(bookedLesson),
-          bookedLessonDates: FieldValue.arrayUnion(slot.date),
           updatedAt: serverTimestamp(),
         });
         return member.name;

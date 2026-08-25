@@ -1,8 +1,7 @@
 import { adminDb, serializeFirestore, serverTimestamp } from "@/lib/firebase/admin";
 import { validateLessonDeadline } from "@/lib/lesson/dates";
-import type { BookedLesson, LessonBooking, LessonUser, TrialBooking } from "@/lib/lesson/types";
+import type { LessonBooking, LessonUser, TrialBooking } from "@/lib/lesson/types";
 import { countRemainingLessons, normalizeLessonTickets, restoreLessonTicket, todayTokyoDate } from "@/lib/lesson/tickets";
-import { updateArrayWithoutBooking } from "@/lib/lesson/bookings";
 import { syncGoogleCalendar, writeCalendarSyncLog } from "./calendar";
 
 export async function cancelLessonBooking(bookingId: string, requesterUid: string, options: { admin?: boolean } = {}) {
@@ -53,7 +52,6 @@ export async function cancelLessonBooking(bookingId: string, requesterUid: strin
   await adminDb.runTransaction(async (transaction) => {
     const userSnap = await transaction.get(userRef);
     const current = userSnap.data() as LessonUser | undefined;
-    const nextLessons = updateArrayWithoutBooking(current?.bookedLessons, bookingId);
     const currentTickets = normalizeLessonTickets({ lessonTickets: current?.lessonTickets });
     const restoredTickets = restoreLessonTicket(
       currentTickets,
@@ -72,8 +70,6 @@ export async function cancelLessonBooking(bookingId: string, requesterUid: strin
     transaction.update(userRef, {
       remainingLessons: countRemainingLessons(restoredTickets),
       lessonTickets: restoredTickets,
-      bookedLessons: nextLessons,
-      bookedLessonDates: nextLessons.map((item: BookedLesson) => item.date),
       updatedAt: serverTimestamp(),
     });
   });

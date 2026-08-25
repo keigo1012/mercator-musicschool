@@ -44,8 +44,6 @@ export async function requireUser(request: Request) {
       lastMonthlyLessonGrantMonth: "",
       lessonTickets: [],
       selectedLessonInstrument: DEFAULT_INSTRUMENT,
-      bookedLessons: [],
-      bookedLessonDates: [],
       createdAt: now,
       updatedAt: now,
     });

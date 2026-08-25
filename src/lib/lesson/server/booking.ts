@@ -1,9 +1,8 @@
-import { adminDb, FieldValue, serverTimestamp } from "@/lib/firebase/admin";
+import { adminDb, serverTimestamp } from "@/lib/firebase/admin";
 import { getInstrumentLabel, isDefaultClosedLessonHour } from "@/lib/lesson/constants";
 import { parseBookingRequest, validateLessonDeadline } from "@/lib/lesson/dates";
 import type { BookedLesson, LessonBooking, LessonUser } from "@/lib/lesson/types";
-import { consumeOneLessonTicket, countRemainingLessons, normalizeLessonTickets } from "@/lib/lesson/tickets";
-import { updateArrayWithoutBooking } from "@/lib/lesson/bookings";
+import { consumeOneLessonTicket, countRemainingLessons, normalizeLessonTickets, restoreLessonTicket, todayTokyoDate } from "@/lib/lesson/tickets";
 import { assertInstrument } from "@/lib/lesson/server-utils";
 import { syncGoogleCalendar, writeCalendarSyncLog } from "./calendar";
 
@@ -30,7 +29,7 @@ export async function createLessonBooking(uid: string, body: Record<string, unkn
   const dayClosedRef = adminDb.collection("lessonClosedDays").doc(slot.dayId);
   const slotClosedRef = adminDb.collection("lessonClosedDays").doc(slot.slotId);
 
-  const { calendarBase, bookedLesson, ticketsBeforeBooking } = await adminDb.runTransaction(async (transaction) => {
+  const { calendarBase, bookedLesson } = await adminDb.runTransaction(async (transaction) => {
     const [userSnap, bookingSnap, trialSnap, dayClosedSnap, slotClosedSnap] = await Promise.all([
       transaction.get(userRef),
       transaction.get(bookingRef),
@@ -97,12 +96,10 @@ export async function createLessonBooking(uid: string, body: Record<string, unkn
     transaction.update(userRef, {
       remainingLessons: countRemainingLessons(consumed.next),
       lessonTickets: consumed.next,
-      bookedLessons: FieldValue.arrayUnion(bookedLesson),
-      bookedLessonDates: FieldValue.arrayUnion(slot.date),
       selectedLessonInstrument: instrument,
       updatedAt: serverTimestamp(),
     });
-    return { calendarBase, bookedLesson, ticketsBeforeBooking: activeTickets };
+    return { calendarBase, bookedLesson };
   });
 
   try {
@@ -120,16 +117,7 @@ export async function createLessonBooking(uid: string, body: Record<string, unkn
       date: slot.date,
     });
     const googleCalendarEventId = calendar.googleCalendarEventId ?? "";
-    await adminDb.runTransaction(async (transaction) => {
-      const userSnap = await transaction.get(userRef);
-      const current = userSnap.data() as LessonUser | undefined;
-      const nextLessons = updateArrayWithoutBooking(current?.bookedLessons, slot.bookingId);
-      transaction.update(bookingRef, { googleCalendarEventId, updatedAt: serverTimestamp() });
-      transaction.update(userRef, {
-        bookedLessons: [...nextLessons, { ...bookedLesson, googleCalendarEventId }],
-        updatedAt: serverTimestamp(),
-      });
-    });
+    await bookingRef.update({ googleCalendarEventId, updatedAt: serverTimestamp() });
     await writeCalendarSyncLog({ bookingId: slot.bookingId, action: "create", status: "success", googleCalendarEventId });
     return { bookingId: slot.bookingId, googleCalendarEventId };
   } catch (error) {
@@ -137,12 +125,24 @@ export async function createLessonBooking(uid: string, body: Record<string, unkn
     await adminDb.runTransaction(async (transaction) => {
       const userSnap = await transaction.get(userRef);
       const current = userSnap.data() as LessonUser | undefined;
+      const currentTickets = normalizeLessonTickets({ lessonTickets: current?.lessonTickets });
+      const restoredTickets = restoreLessonTicket(
+        currentTickets,
+        bookedLesson.lessonTicketId && bookedLesson.lessonTicketIssuedOn && bookedLesson.lessonTicketExpiresOn && bookedLesson.lessonTicketSource
+          ? {
+              id: bookedLesson.lessonTicketId,
+              count: 1,
+              issuedOn: bookedLesson.lessonTicketIssuedOn,
+              expiresOn: bookedLesson.lessonTicketExpiresOn,
+              source: bookedLesson.lessonTicketSource,
+            }
+          : null,
+        todayTokyoDate(),
+      );
       transaction.delete(bookingRef);
       transaction.update(userRef, {
-        remainingLessons: countRemainingLessons(ticketsBeforeBooking),
-        lessonTickets: ticketsBeforeBooking,
-        bookedLessons: updateArrayWithoutBooking(current?.bookedLessons, slot.bookingId),
-        bookedLessonDates: updateArrayWithoutBooking(current?.bookedLessons, slot.bookingId).map((item: BookedLesson) => item.date),
+        remainingLessons: countRemainingLessons(restoredTickets),
+        lessonTickets: restoredTickets,
         updatedAt: serverTimestamp(),
       });
     });

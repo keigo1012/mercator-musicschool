@@ -47,8 +47,6 @@ export type LessonUser = {
   selectedLessonInstrument: string;
   lessonMemberCount?: number;
   lessonMembers?: LessonMember[];
-  bookedLessons: BookedLesson[];
-  bookedLessonDates: string[];
   lessonFullName?: string;
   lessonBirthDate?: string;
   lessonPostalCode?: string;
