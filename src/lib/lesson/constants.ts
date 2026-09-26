@@ -1,4 +1,5 @@
 export const LESSON_HOURS = [13, 14, 15, 16, 17, 18, 19, 20, 21] as const;
+export const ADMIN_ASSIGNED_LESSON_HOURS = [9, 10, 11, 12, ...LESSON_HOURS] as const;
 export const DEFAULT_CLOSED_LESSON_HOURS = [18] as const;
 
 export const INSTRUMENTS = [

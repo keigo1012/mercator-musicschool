@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { LESSON_HOURS } from "@/lib/lesson/constants";
+import { ADMIN_ASSIGNED_LESSON_HOURS } from "@/lib/lesson/constants";
 import { isoDate, toTokyoParts } from "@/lib/lesson/dates";
 import type { LessonUser } from "@/lib/lesson/types";
 import { apiFetch, inputClass, primaryButton, subtleButton } from "./lesson-shared";
@@ -67,7 +67,7 @@ export function AdminAssignedLessonPanel({ authUser, users, refresh, setError, s
 }) {
   const [query, setQuery] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
-  const [form, setForm] = useState<{ lessonTitle: string; date: string; hour: number }>({ lessonTitle: "", date: todayIso(), hour: LESSON_HOURS[0] });
+  const [form, setForm] = useState<{ lessonTitle: string; date: string; hour: number }>({ lessonTitle: "", date: todayIso(), hour: ADMIN_ASSIGNED_LESSON_HOURS[0] });
   const [busy, setBusy] = useState(false);
   const targets = useMemo(() => targetsFromUsers(users), [users]);
   const filteredTargets = targets.filter((target) => target.searchText.includes(query.trim().toLowerCase()));
@@ -144,7 +144,7 @@ export function AdminAssignedLessonPanel({ authUser, users, refresh, setError, s
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_9rem]">
           <label className="text-sm font-bold text-slate-700">レッスン名<input className={`${inputClass} mt-2`} maxLength={60} placeholder="例：発表会リハーサル" value={form.lessonTitle} onChange={(event) => setForm({ ...form, lessonTitle: event.target.value })} required /></label>
           <label className="text-sm font-bold text-slate-700">日付<input className={`${inputClass} mt-2`} type="date" min={todayIso()} value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} required /></label>
-          <label className="text-sm font-bold text-slate-700">開始時間<select className={`${inputClass} mt-2 appearance-none`} value={form.hour} onChange={(event) => setForm({ ...form, hour: Number(event.target.value) })}>{LESSON_HOURS.map((hour) => <option key={hour} value={hour}>{hour}:00</option>)}</select></label>
+          <label className="text-sm font-bold text-slate-700">開始時間<select className={`${inputClass} mt-2 appearance-none`} value={form.hour} onChange={(event) => setForm({ ...form, hour: Number(event.target.value) })}>{ADMIN_ASSIGNED_LESSON_HOURS.map((hour) => <option key={hour} value={hour}>{hour}:00</option>)}</select></label>
         </div>
         <div className="rounded-lg bg-white p-3 ring-1 ring-slate-950/10">
           <div className="flex flex-wrap items-end justify-between gap-2">

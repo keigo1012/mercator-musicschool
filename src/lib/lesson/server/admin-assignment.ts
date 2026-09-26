@@ -1,6 +1,6 @@
 import { adminDb, serverTimestamp } from "@/lib/firebase/admin";
-import { DEFAULT_INSTRUMENT, INSTRUMENTS } from "@/lib/lesson/constants";
-import { parseBookingRequest } from "@/lib/lesson/dates";
+import { ADMIN_ASSIGNED_LESSON_HOURS, DEFAULT_INSTRUMENT, INSTRUMENTS } from "@/lib/lesson/constants";
+import { bookingIdFromDateHour } from "@/lib/lesson/dates";
 import type { BookedLesson, LessonUser } from "@/lib/lesson/types";
 import { consumeOneLessonTicket, countRemainingLessons, normalizeLessonTickets, todayTokyoDate } from "@/lib/lesson/tickets";
 
@@ -45,7 +45,18 @@ export async function createAdminAssignedLessons(adminId: string, body: Record<s
   const lessonTitle = normalizedTitle(body.lessonTitle);
   const date = String(body.date ?? "");
   const hour = Number(body.hour);
-  const slot = parseBookingRequest(date, hour);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !ADMIN_ASSIGNED_LESSON_HOURS.includes(hour as (typeof ADMIN_ASSIGNED_LESSON_HOURS)[number])) {
+    throw new Error("予約日時が正しくありません。");
+  }
+  const slotId = bookingIdFromDateHour(date, hour);
+  const slot = {
+    date,
+    bookingId: slotId,
+    dayId: slotId.slice(0, 8),
+    slotId,
+    startAt: `${date}T${String(hour).padStart(2, "0")}:00:00+09:00`,
+    endAt: `${date}T${String(hour + 1).padStart(2, "0")}:00:00+09:00`,
+  };
   if (slot.date < todayTokyoDate()) throw new Error("過去の日付には付与できません。");
   const targets = normalizedTargets(body.targets);
   const assignmentGroupId = crypto.randomUUID().replaceAll("-", "");
