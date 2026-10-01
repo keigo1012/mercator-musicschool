@@ -23,7 +23,7 @@ export const courses = [
     alt: "",
     body: ["家で大きな音を出す練習ができない方に", "オススメなのがフィンガードラム。", "鍵盤やパッドを使用して本格的なドラムが叩けます。", "動画制作や音源制作の為のDTMレッスンも受講できます。"],
     link: "フィンガードラムの動画を見る",
-    linkHref: "https://www.youtube.com/",
+    linkHref: "https://www.youtube.com/watch?v=OGKglLq060Q",
   },
 ];
 
